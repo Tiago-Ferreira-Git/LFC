@@ -4,50 +4,49 @@ function [A_global,bus,area_gain_tie_lines] = update_dynamics(areas,bus,bus_init
     ren_data = ren_data.data;
     n_ren = size(ren_data.bus,1);
 
-
+    %bus = bus_initial;
     %select the first bus for each area
 
     buses_to_increase_con = [];
     %zeros(n_areas,1);
     for i = 1:n_areas
         mask = find(areas == i);
-        buses_to_increase_con = [buses_to_increase_con  ; min(5,size(mask,1))];
+        buses_to_increase_con = [buses_to_increase_con  ; mask(1:min(3,size(mask,1)))];
             %];
 
     end
     bus_prev = bus;
-
+    
 
     x = 0:3600:3600*24;
     %gaussmf(x,[10*3600 12*3600])
-    nominal_load_increase_profile = gaussmf(x,[4*3600 12*3600])*0.2 + 1;
+    %nominal_load_increase_profile = gaussmf(x,[4*3600 12*3600])*2;
+    nominal_load_p_increase_profile = gaussmf(x,[4*3600 12*3600])*0.5+0.1;
+    nominal_load_q_increase_profile = gaussmf(x,[4*3600 12*3600])*0.8+0.1;
+    %+0.5;
 
+    bus(buses_to_increase_con,6) = nominal_load_p_increase_profile(hour);
+    bus(buses_to_increase_con,7) = nominal_load_q_increase_profile(hour);
 
+    bus(end-n_ren+1:end,4) = ren_data.data(hour,2:end)';
 
-    bus(buses_to_increase_con,6) = nominal_load_increase_profile(hour);
-
-    %buses_to_increase_prod = ren_data.bus;
-
-    %bus(buses_to_increase_prod,4) = min(4,ren_data.data(hour,2:end)');
-    bus(end-n_ren+1:end,4) = min(3,ren_data.data(hour,2:end)');
-    %bus(end-n_ren+1:end,5) = min(2,ren_data.data(hour,2:end)')*0.1;
-    
-    %ren_data.data(hour,2:end)'./10;
-
-
-    %Assuming there are systems to compensate the reactive power demand 
     buses_with_generation = bitor(bus(:,10)==2 , bus(:,10)==1 );
-    %bus(buses_with_generation,5) = 0.5;
     bus(buses_with_generation,11) = 9999;
     bus(buses_with_generation,12) = -9999;
+
     
-    ren_data.data(hour,2:end)';
+
+    bus(119:end,11) = min(1,ren_data.data(hour,2:end)'./10)+0.001;
+    bus(119:end,12) = -min(1,ren_data.data(hour,2:end)'./10)-0.001;
+    bus(119:end,10) = 2;
+
+    ren_data.data(hour,2:end)'
 
     tol = 1e-8;                      % tolerance for convergence
-    itermax = 100;                    % maximum number of iterations
+    itermax = 500;                    % maximum number of iterations
     acc = 1.0;                       % acceleration factor
     [bus,~,~] = loadflow(bus,line,tol,itermax,acc,'n',2);
-
+    size(buses_to_increase_con,1)
     teste = bus(:,3) - bus_prev(:,3);
         
     bus(:,3) = deg2rad(bus(:,3));
@@ -78,8 +77,8 @@ function [A_global,bus,area_gain_tie_lines] = update_dynamics(areas,bus,bus_init
     end
 
 
-    
-    
+    bus(:,3) = rad2deg(bus(:,3));
+    bus = bus(:,1:13);
     
 end
 

@@ -26,14 +26,14 @@ function areas = area_partitioning(lines,k,machine_buses)
     % figure
     % scatter(V(:,2),V(:,3))
     %select the eigen values greater than zero
-    mask = Eig > 1e-2;
-    V = V(:,mask);
+    %mask = Eig > 1e-2;
+    %V = V(:,mask);
     %3
     %[areas,~] = kmeans(V(:,2:k-2),k,'Distance','cosine');
-    
+    i = 0;
     flag = false;
     while ~flag
-        [areas,~] = kmeans(V(:,1:k),k,'Distance','cosine');
+        [areas,C] = kmeans(V(:,1:k),k,'Distance','cosine');
         for i=1:k
             area_bus = find(areas==i);
             if ~any(ismember(area_bus,machine_buses))
@@ -48,8 +48,13 @@ function areas = area_partitioning(lines,k,machine_buses)
             break
         end
         flag = false;
-         
+        i = i +1;
+        if i == 1000
+            
+        end
     end
+
+
     
 end
 

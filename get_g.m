@@ -1,6 +1,6 @@
 function [g,bus,line] = get_g(data_file)
     % 
-    path_name = 'C:\Users\Tiago\Documents\Tese\Implementation\RES in PST\data\';
+    path_name = '..\..\data\';
 
 
     run(fullfile(path_name,data_file));

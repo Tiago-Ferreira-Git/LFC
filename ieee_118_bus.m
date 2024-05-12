@@ -1,30 +1,27 @@
 
 clearvars -except path; close all; clc;
-run('plot_options');
-
-% %% Run nonlinear simulation and store results
-% cd('../../pstess/');
-% %set_path('IEEE_bus_14');
-% set_path('IEEE_bus_118.m');  % set the working directory in Sget_path
-% %no_res_matpower
-% 
-% run('s_simu');  % run PSTess
-% cd('../analysis/area partition/');
-
+%run('plot_options');
+addpath('../../pstess/')
 
 [g,bus,line] = get_g('IEEE_bus_118_res');
-
 tol = 1e-8;                      % tolerance for convergence
 itermax = 50;                    % maximum number of iterations
 acc = 1.0;                       % acceleration factor
+
+buses_with_generation = bitor(bus(:,10)==2 , bus(:,10)==1 );
+bus(buses_with_generation,11) = 9999;
+bus(buses_with_generation,12) = -9999;
+bus(119:end,11) = 0.001;
+bus(119:end,12) = -0.001;
+
 
 [bus,line,line_flw] = loadflow(bus,line,tol,itermax,acc,'n',2);
 
 bus_initial = bus;
 clearvars -except g bus t line bus_initial
 
-%%
-n_areas = 30;
+
+n_areas = 35;
 %n_areas = 3;
 [A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss] = get_global_ss(g,bus,n_areas,0);
 
@@ -37,14 +34,14 @@ C_angle = zeros(n_areas,size(C,2));
 
 C_angle(1:n_areas,end-n_areas+1:end) = -eye(n_areas);
 C = [C ; C_angle];
-%ones(size(E_global,1),n_areas);
-
+%%
+plot_network(areas,line,n_areas);
 
 %%
 tic
 
 
-simulation_hours = 168;
+simulation_hours = 96;
 t = 0:h:3600*simulation_hours;
 %7*24*3600;
 
@@ -53,7 +50,7 @@ x0 = zeros(size(A,1),1);
 
 mask = t > 30;
 
-w = get_disturbance_profile(w,h,n_areas);
+w = get_disturbance_profile(w,h,n_areas,simulation_hours);
 
 R_ = 0.01;
 
@@ -65,25 +62,24 @@ for i=1:n_areas
 end
 
 % weight of the integrator 
-
-
 q(1,size(A_global,1)+1:end) = 10;
 
 
 
 %perfomance metrics
-
 time_settling = zeros(1,simulation_hours);
-
 frequency_error_cost = zeros(2,n_areas);
 disp_cost_machine = zeros(2,size(B,2));
 disp_cost_area = zeros(2,n_areas);
 time_settling_cost = zeros(2,simulation_hours);
-
 to_plot = zeros(simulation_hours,n_areas);
+bus_reactive_power_ren = zeros(132,simulation_hours);
 
 
-for control_type = 1:2
+%Frequency output limit according to [1] 
+freq_limit = 0.05/50;
+
+for control_type = 1:1
     % Controller gain synthesis 
     if(control_type==1)
         decentralized = true;
@@ -102,25 +98,31 @@ for control_type = 1:2
     flag = 1;
     % t_settling = 0;
     bus = bus_initial;
-    k_ = 0;
-    x = zeros(size(A,1),size(t,2));
-    u = zeros(size(B,2),size(t,2));
-    u_area = zeros(n_areas,size(t,2));
-    y = zeros(size(C,1),size(t,2));
+    k_ = 1:1440:length(t);
+    % x = zeros(size(A,1),size(t,2));
+    % u = zeros(size(B,2),size(t,2));
+    % u_area = zeros(n_areas,size(t,2));
+    % y = zeros(size(C,1),size(t,2));
+    t_settling = 0;
     x(:,1) = x0;
     for k = 1:length(t)-1
         
-        if(3600 < (k-k_)*h )
+        if(k == k_(hour+1) )
+           bus_reactive_power_ren(:,hour) = bus(:,5);
+           if hour == 12
+                mask = ones(132,1);
+                %bitand(bus(:,7)<0.5 , 0.3<bus(:,7));
+           end
+           
            hour = hour + 1;
            flag = 1;
-           k_ = k;
 
            if(24 <= hour -day*24 )
                  day = day + 1
-                 hour-day*24+1;
                  %K = get_gain(A,B,E,R_,q);
            end
-           [A_global,~,k_tie] = update_dynamics(areas,bus,bus_initial,line,n_areas,A_global,bus_ss,g,network,hour-day*24+1);
+           
+           [A_global,bus,k_tie] = update_dynamics(areas,bus,bus_initial,line,n_areas,A_global,bus_ss,g,network,hour-day*24+1);
            [A,B,~,W,~,~] = discrete_dynamics(A_global,B_global,C_global,D_global,W_global,E_global,bus_ss,h,n_areas,L);
             
 
@@ -128,61 +130,117 @@ for control_type = 1:2
             to_plot(hour,:) = k_tie;
         end
 
-        u(:,k) = -K*x(:,k);
-        u(:,k) = min(max(u(:,k),-0.1),0.1);
-        x(:,k+1) = A*x(:,k) + B*u(:,k) + W*w(:,k);
-
-        y(:,k+1) = C*x(:,k+1);
-
-
-
-        y(1:3:end-n_areas,k) = min(max(y(1:3:end-n_areas,k),-0.04*2*pi),0.04*2*pi);
-        %Frequency output limit according to [1] 
-        freq_limit = 0.05/50;
-        y(1:3:end-n_areas,k) = min(max(y(1:3:end-n_areas,k),-freq_limit),freq_limit);
-
-        %Controller performance metric
-        t_settling = ((k-k_)*h );
-        if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
-            time_settling(1,hour) =  t_settling;
-            flag = 0;
-
-        end
+        % u(:,k) = -K*x(:,k);
+        % u(:,k) = min(max(u(:,k),-0.1),0.1);
+        % x(:,k+1) = A*x(:,k) + B*u(:,k) + W*w(:,k);
+        % 
+        % y(:,k+1) = C*x(:,k+1);
 
 
-        %Get the control action per area
-        for i=1:n_areas
-            u_area(i,k) = sum(u(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+bus_ss(i,3),3));
-        end
+
+        
+        % y(1:3:end-n_areas,k) = min(max(y(1:3:end-n_areas,k),-freq_limit),freq_limit);
+        % 
+        % %Controller performance metric
+        % %all(abs(y(1:3:end-n_areas,k+1)) < 1e-9)
+        % if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
+        %     t_settling = ((k-k_(hour))*h );
+        %     time_settling(1,hour) =  t_settling;
+        %     flag = 0;
+        % 
+        % end
+        % 
+        % 
+        % %Get the control action per area
+        % for i=1:n_areas
+        %     u_area(i,k) = sum(u(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+bus_ss(i,3),3));
+        % end
 
     end
 
-    disp_cost_area(control_type,:) = sum(u_area(1:end,:),2);
-    disp_cost_machine(control_type,:) = sum(u(1:end,:),2);
-    frequency_error_cost(control_type,:) = sum(abs(y(1:3:end-n_areas,:)),2)';
-    time_settling_cost(control_type,:) = time_settling;
-    y = y';
+    % disp_cost_area(control_type,:) = sum(u_area(1:end,:),2);
+    % disp_cost_machine(control_type,:) = sum(u(1:end,:),2);
+    % frequency_error_cost(control_type,:) = sum(abs(y(1:3:end-n_areas,:)),2)';
+    % time_settling_cost(control_type,:) = time_settling;
+    % y = y';
 
-    figure
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    hold on
-    grid on
-    box on;
-    stairs(t,y(:,1:3:end-n_areas),'LineWidth',1.5);
-    yline(freq_limit,'--');
-    yline(-freq_limit,'--');
-    ylim([min(min(y(:,1:3:end-n_areas)))*1.3,max(max(y(:,1:3:end-n_areas)))*1.3])
-    legend('$\Delta\omega_1$','$\Delta\omega_2$','$\Delta\omega_3$','Interpreter','latex')
-    ylabel('$\Delta\omega$ (pu)','interpreter','latex');
-    xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-    hold off
-    set(gcf,'renderer','Painters');
-    title='./fig/delta_f.png';
-    saveas(gca,title,'png');
+
    
 end
 
+covariances = zeros(n_areas,1);
+means = zeros(n_areas,1);
+for i =1:n_areas
 
+    covariances(i) = cov(to_plot(2:end-3,i));
+    means(i) = mean(to_plot(2:end-3,i));
+
+    % title = sprintf('./fig/K_tie_%d_%d.png',i,simulation_hours);
+    % figure
+    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    % hold on
+    % grid on
+    % box on;
+    % plot(1:simulation_hours-5,to_plot(2:end-4,i)-to_plot(2,i),'LineWidth',1.5);
+    % ylabel('$T_{{tie}_{i}} - T_{{tie}_{i,0}}$ ','interpreter','latex');
+    % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+    % hold off
+    % set(gcf,'renderer','Painters');
+    % saveas(gca,title,'png');
+
+
+end
+
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(sqrt(covariances),'LineWidth',1.5);
+%legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
+%y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
+ylabel('$\sigma$','interpreter','latex');
+xlabel('$area$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title = sprintf('./fig/K_tie_%d_%d.png',10000,simulation_hours);
+saveas(gca,title,'png');
+
+
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(means,'LineWidth',1.5);
+%legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
+%y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
+ylabel('$\mu$','interpreter','latex');
+xlabel('$area$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title = sprintf('./fig/K_tie_%d_%d.png',10123,simulation_hours);
+saveas(gca,title,'png');
+
+
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours,bus_reactive_power_ren(119:end,:),'LineWidth',1.5);
+ylabel('$Q_G$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title = './fig/Q_gen.png';
+saveas(gca,title,'png');
+
+
+
+
+
+%%
 figure; 
 hold on;
 grid on;
@@ -199,7 +257,7 @@ hold off;
 set(gcf,'renderer','Painters');
 title=sprintf('./fig/error_R%f.png',R_);
 saveas(gca,title,'png');
-
+%%
 
 figure
 hold on;
@@ -240,7 +298,7 @@ saveas(gca,title,'png');
 
 
 
-
+%%
 figure; 
 hold on;
 grid on;
@@ -261,8 +319,6 @@ saveas(gca,title,'png');
 
 
 
-
-
 %%
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
@@ -277,6 +333,25 @@ hold off
 set(gcf,'renderer','Painters');
 title='./fig/delta_u.png';
 saveas(gca,title,'png');
+%%
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+stairs(t,y(:,1:3:end-n_areas),'LineWidth',1.5);
+yline(freq_limit,'--');
+yline(-freq_limit,'--');
+ylim([min(min(y(:,1:3:end-n_areas)))*1.3,max(max(y(:,1:3:end-n_areas)))*1.3])
+legend('$\Delta\omega_1$','$\Delta\omega_2$','$\Delta\omega_3$','Interpreter','latex')
+ylabel('$\Delta\omega$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title='./fig/delta_f.png';
+saveas(gca,title,'png');
+
+
 %%
 
 figure
@@ -358,60 +433,6 @@ saveas(gca,title,'png');
 
 
 
-covariances = zeros(n_areas,1);
-means = zeros(n_areas,1);
-for i =1:n_areas
-
-    covariances(i) = cov(to_plot(2:end-3,i));
-    means(i) = mean(to_plot(2:end-3,i));
-
-    % title = sprintf('./fig/K_tie_%d_%d.png',i,simulation_hours);
-    % figure
-    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    % hold on
-    % grid on
-    % box on;
-    % plot(1:simulation_hours-5,to_plot(2:end-4,i)-to_plot(2,i),'LineWidth',1.5);
-    % ylabel('$T_{{tie}_{i}} - T_{{tie}_{i,0}}$ ','interpreter','latex');
-    % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-    % hold off
-    % set(gcf,'renderer','Painters');
-    % saveas(gca,title,'png');
-
-
-end
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-plot(sqrt(covariances),'LineWidth',1.5);
-%legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
-%y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
-ylabel('$\sigma$','interpreter','latex');
-xlabel('$area$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title = sprintf('./fig/K_tie_%d_%d.png',10000,simulation_hours);
-saveas(gca,title,'png');
-
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-plot(means,'LineWidth',1.5);
-%legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
-%y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
-ylabel('$\mu$','interpreter','latex');
-xlabel('$area$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title = sprintf('./fig/K_tie_%d_%d.png',10123,simulation_hours);
-saveas(gca,title,'png');
-
 toc
 
 
@@ -430,24 +451,6 @@ toc
 % saveas(gca,title,'png');
 
 
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-
-c_ = zeros(n_areas,210);
-c_(1:n_areas,end-n_areas+1:end) = -eye(n_areas);
-
-stairs(t,(c_*x)','LineWidth',1.5);
-legend('$\Delta \delta_{1}$','$\Delta \delta_{2}$','$\Delta \delta_{2}$','Interpreter','latex')
-ylabel('$\Delta \delta$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title='./fig/p_ren.png';
-saveas(gca,title,'png');
 
 
 
