@@ -158,7 +158,7 @@ function plot_network(areas,line,n_areas)
     1.0000    0.7586    0.5172
     0.1379    0.1379    0.0345
     0.5517    0.6552    0.4828
-    0         0.4470    0.7410
+    75/255    220/255   59/255  %asdasda
     0.5172    0.4483         0
     0.4483    0.9655    1.0000
     0.6207    0.7586    1.0000
@@ -218,7 +218,7 @@ function plot_network(areas,line,n_areas)
         0, 255, 255;     % Aqua
         255, 140, 0;     % Dark Orange
         0, 0, 0;         % Black
-        255, 255, 255;   % White
+        128 128 128;   % White
         70, 130, 180;    % Sky Blue (Replaced Ivory)
         128, 0, 0;       % Dark Red
         0, 128, 0;       % Dark Green
@@ -260,7 +260,7 @@ function plot_network(areas,line,n_areas)
         NodeColor(mask,:) = repmat(matlab_colors(i,:),n,1);
         
     end
-    xlim([min(XData)-10 max(XData)+10])
+    xlim([min(XData)-10 max(XData)+200])
     ylim([min(YData)-20 max(YData)+20])
     set(gca, 'XTick', [], 'XTickLabel', []);
     set(gca, 'YTick', [], 'YTickLabel', []);
@@ -269,10 +269,11 @@ function plot_network(areas,line,n_areas)
     set(get(gca, 'YAxis'), 'Visible', 'off');
 
 
-    gscatter(XData,YData,areas)
+    gscatter(XData,YData,areas,matlab_colors)
 
     h = plot(g);
-    legend({'Area 1','Area 2','Area 3','Area 4','Area 5','Area 1','Area 2','Area 1','Area 1','Area 1','Area 1','Area 2','Area 1','Area 1','Area 1','Area 1','Area 2','Area 1','Area 1','Area 1','Area 1','Area 2','Area 1','Area 1','Area 1','Area 1','Area 2','Area 1','Area 1','Area 1','Area 1','Area 2','Area 1','Area 1','Area 1'})
+    lgd = legend({'Area 1','Area 2','Area 3','Area 4','Area 5','Area 6','Area 7','Area 8','Area 9','Area 10','Area 11','Area 12','Area 13','Area 14','Area 15','Area 16','Area 17','Area 18','Area 19','Area 20','Area 21','Area 22','Area 23','Area 24','Area 25','Area 26','Area 27','Area 28','Area 29','Area 30','Area 31','Area 32','Area 33','Area 34','Area 35'},'Location','east');
+    lgd.FontSize = 12;
     hold off;
     
 

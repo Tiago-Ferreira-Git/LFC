@@ -158,7 +158,7 @@ function plot_network(areas,line,n_areas)
     1.0000    0.7586    0.5172
     0.1379    0.1379    0.0345
     0.5517    0.6552    0.4828
-    0         0.4470    0.7410
+    75/255    220/255   59/255  %asdasda
     0.5172    0.4483         0
     0.4483    0.9655    1.0000
     0.6207    0.7586    1.0000
@@ -203,7 +203,7 @@ function plot_network(areas,line,n_areas)
         0, 0, 128;       % Navy
         128, 128, 0;     % Olive
         0.4940*255 0.1840*255 0.5560*255
-        0, 128, 128;     % Teal
+        0, 128, 128;     % Teal asdasdasd
         192, 192, 192;   % Silver
         128, 128, 128;   % Gray
         255, 165, 0;     % Orange
@@ -212,19 +212,19 @@ function plot_network(areas,line,n_areas)
         210, 105, 30;    % Chocolate
         0, 255, 127;     % Spring Green
         255, 215, 0;     % Gold
-        255, 69, 0;      % Red-Orange
+        75, 220, 59;      % Red-Orange
         255, 20, 147;    % Deep Pink
         70, 130, 180;    % Steel Blue
         0, 255, 255;     % Aqua
         255, 140, 0;     % Dark Orange
         0, 0, 0;         % Black
-        255, 255, 255;   % White
+        128 128 128;   % White
         70, 130, 180;    % Sky Blue (Replaced Ivory)
         128, 0, 0;       % Dark Red
         0, 128, 0;       % Dark Green
         0, 0, 128;       % Dark Blue
         255, 99, 71;     % Tomato
-        0, 128, 128;     % Dark Cyan
+        0, 128, 128;     % Dark Cyan sadas
         128, 0, 128;     % Dark Magenta
         255, 140, 105    % Salmon
     ];
@@ -269,7 +269,7 @@ function plot_network(areas,line,n_areas)
     set(get(gca, 'YAxis'), 'Visible', 'off');
 
 
-    gscatter(XData,YData,areas)
+    gscatter(XData,YData,areas,matlab_colors)
 
     h = plot(g);
     lgd = legend({'Area 1','Area 2','Area 3','Area 4','Area 5','Area 6','Area 7','Area 8','Area 9','Area 10','Area 11','Area 12','Area 13','Area 14','Area 15','Area 16','Area 17','Area 18','Area 19','Area 20','Area 21','Area 22','Area 23','Area 24','Area 25','Area 26','Area 27','Area 28','Area 29','Area 30','Area 31','Area 32','Area 33','Area 34','Area 35'},'Location','east');

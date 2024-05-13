@@ -41,7 +41,7 @@ plot_network(areas,line,n_areas);
 tic
 
 
-simulation_hours = 96;
+simulation_hours = 4800;
 t = 0:h:3600*simulation_hours;
 %7*24*3600;
 
@@ -67,13 +67,13 @@ q(1,size(A_global,1)+1:end) = 10;
 
 
 %perfomance metrics
-time_settling = zeros(1,simulation_hours);
-frequency_error_cost = zeros(2,n_areas);
-disp_cost_machine = zeros(2,size(B,2));
-disp_cost_area = zeros(2,n_areas);
-time_settling_cost = zeros(2,simulation_hours);
-to_plot = zeros(simulation_hours,n_areas);
-bus_reactive_power_ren = zeros(132,simulation_hours);
+% time_settling = zeros(1,simulation_hours);
+% frequency_error_cost = zeros(2,n_areas);
+% disp_cost_machine = zeros(2,size(B,2));
+% disp_cost_area = zeros(2,n_areas);
+% time_settling_cost = zeros(2,simulation_hours);
+% to_plot = zeros(simulation_hours,n_areas);
+% bus_reactive_power_ren = zeros(132,simulation_hours);
 
 
 %Frequency output limit according to [1] 
@@ -81,17 +81,17 @@ freq_limit = 0.05/50;
 
 for control_type = 1:1
     % Controller gain synthesis 
-    if(control_type==1)
-        decentralized = true;
-    else
-        decentralized = false;
-    end
-    if ~decentralized  E = ones(size(E)) ; end
-    K = get_gain(A,B,E,R_,q);
-    if isnan(K)
-        toc
-        error 'Could not compute Gains'
-    end
+    % if(control_type==1)
+    %     decentralized = true;
+    % else
+    %     decentralized = false;
+    % end
+    % if ~decentralized  E = ones(size(E)) ; end
+    % K = get_gain(A,B,E,R_,q);
+    % if isnan(K)
+    %     toc
+    %     error 'Could not compute Gains'
+    % end
     
     hour = 1;
     day = 0;
@@ -167,7 +167,7 @@ for control_type = 1:1
 
    
 end
-
+%%
 covariances = zeros(n_areas,1);
 means = zeros(n_areas,1);
 for i =1:n_areas
@@ -190,8 +190,9 @@ for i =1:n_areas
 
 
 end
-
+%%
 figure
+set(gca,'FontSize',20);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
@@ -201,17 +202,21 @@ plot(sqrt(covariances),'LineWidth',1.5);
 %y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
 ylabel('$\sigma$','interpreter','latex');
 xlabel('$area$','Interpreter','latex');
+xlim([0 35.2])
 hold off
 set(gcf,'renderer','Painters');
-title = sprintf('./fig/K_tie_%d_%d.png',10000,simulation_hours);
-saveas(gca,title,'png');
+title = sprintf('./fig/K_tie_%d_%d.eps',10000,simulation_hours);
+saveas(gca,title,'epsc');
+
 
 
 figure
+set(gca,'FontSize',20);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
+xlim([0 35.2])
 plot(means,'LineWidth',1.5);
 %legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
 %y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
@@ -219,11 +224,12 @@ ylabel('$\mu$','interpreter','latex');
 xlabel('$area$','Interpreter','latex');
 hold off
 set(gcf,'renderer','Painters');
-title = sprintf('./fig/K_tie_%d_%d.png',10123,simulation_hours);
-saveas(gca,title,'png');
+title = sprintf('./fig/K_tie_%d_%d.eps',10123,simulation_hours);
+saveas(gca,title,'epsc');
 
-
+%%
 figure
+set(gca,'FontSize',20);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
