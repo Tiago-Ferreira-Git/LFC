@@ -12,9 +12,10 @@ function [A,B,C,W,L,E] = discrete_dynamics(A_global,B_global,C_global,D_global,W
     A = zeros(size(A_global,1)+n_areas);
     
     B = zeros(size(B_global,1)+n_areas,size(B_global,2));
-    
+    %
     C = zeros(size(C_global,1),size(C_global,2)+n_areas);
     
+        %
     W = zeros(size(W_global_discrete,1)+n_areas,size(W_global_discrete,2));
     
     E = zeros(size(E_global,1),size(E_global,2)+n_areas);
@@ -23,8 +24,8 @@ function [A,B,C,W,L,E] = discrete_dynamics(A_global,B_global,C_global,D_global,W
     A(1:size(A_global,1),1:size(A_global,1)) = sys.A;
     
     A(size(A_global,1)+1:end,size(A_global,1)+1:end) = eye(n_areas);
-    
-    
+
+
     %add error integrator
 
     for i=1:n_areas
@@ -41,7 +42,7 @@ function [A,B,C,W,L,E] = discrete_dynamics(A_global,B_global,C_global,D_global,W
     
     E(1:size(E_global,1),1:size(E_global,2)) = E_global;
     
-    %L(1:1+size(L,1):end) = 1;
+    L(1:1+size(L,1):end) = 1;
     E(1:size(E_global,1),size(E_global,2)+1:end) = L;
 
 end

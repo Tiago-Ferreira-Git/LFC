@@ -1,18 +1,17 @@
 
 clearvars -except path; close all; clc;
-%run('../plot_options');
+run('../plot_options');
 addpath('../../pstess/')
 
-[g,bus,line] = get_g('IEEE_bus_118_res');
+%[g,bus,line] = get_g('data3');
+[g,bus,line] = get_g('IEEE_bus_118');
+
+% bus(bus(:,10)==2,11) = 0;
+% bus(bus(:,10)==2,12) = 0;
+
 tol = 1e-8;                      % tolerance for convergence
 itermax = 50;                    % maximum number of iterations
 acc = 1.0;                       % acceleration factor
-
-buses_with_generation = bitor(bus(:,10)==2 , bus(:,10)==1 );
-bus(buses_with_generation,11) = 9999;
-bus(buses_with_generation,12) = -9999;
-bus(119:end,11) = 0.001;
-bus(119:end,12) = -0.001;
 
 
 [bus,line,line_flw] = loadflow(bus,line,tol,itermax,acc,'n',2);
@@ -21,20 +20,28 @@ bus_initial = bus;
 clearvars -except g bus t line bus_initial
 
 
-n_areas = 30;
-%n_areas = 3;
+n_areas = 250;
+n_areas = 20;
+n_areas = 10;
 [A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss] = get_global_ss(g,bus,n_areas,0,1);
-
+canonical_structure(A_global,B_global,n_areas)
 
 
 h = 2.5;
 
 [A,B,C,W,~,E] = discrete_dynamics(A_global,B_global,C_global,D_global,W_global,E_global,bus_ss,h,n_areas,L);
+ctrbM = ctrb(A,B); % controlability matrix
+canonical_structure(A,B,n_areas)
+% r = rank(ctrbM);
+% max(max(ctrbM,[],2),[],1)
+% size(A,1) - r
+
+
 C_angle = zeros(n_areas,size(C,2));
 
 C_angle(1:n_areas,end-n_areas+1:end) = -eye(n_areas);
 C = [C ; C_angle];
-%%
+
 %plot_network(areas,line,n_areas);
 
 %%
@@ -56,46 +63,42 @@ R_ = 0.01;
 
 q = zeros(1,size(A,1));
 q(1,1) = 1;
-for i=1:n_areas
+for i=1:n_areas-1
     
     q(1,sum(bus_ss(1:i,2))+1) = 1;
 end
 
-% weight of the integrator 
+% % weight of the integrator 
 q(1,size(A_global,1)+1:end) = 10;
 
 
 
 %perfomance metrics
-% time_settling = zeros(1,simulation_hours);
-% frequency_error_cost = zeros(2,n_areas);
-% disp_cost_machine = zeros(2,size(B,2));
-% disp_cost_area = zeros(2,n_areas);
-% time_settling_cost = zeros(2,simulation_hours);
+time_settling = zeros(1,simulation_hours);
+frequency_error_cost = zeros(2,n_areas);
+disp_cost_machine = zeros(2,size(B,2));
+disp_cost_area = zeros(2,n_areas);
+time_settling_cost = zeros(2,simulation_hours);
 to_plot = zeros(simulation_hours,n_areas);
-bus_reactive_power_ren = zeros(132,simulation_hours);
-bus_active_power_ren = zeros(132,simulation_hours);
-
-bus_active_power_ren = zeros(132,simulation_hours);
-bus_active_power_ren = zeros(132,simulation_hours);
-
 
 %Frequency output limit according to [1] 
 freq_limit = 0.05/50;
 
 for control_type = 1:1
     % Controller gain synthesis 
-    % if(control_type==1)
-    %     decentralized = true;
-    % else
-    %     decentralized = false;
-    % end
-    % if ~decentralized  E = ones(size(E)) ; end
-    %K = get_gain(A,B,E,R_,q);
-    % if isnan(K)
-    %     toc
-    %     error 'Could not compute Gains'
-    % end
+    if(control_type==1)
+        decentralized = true;
+    else
+        decentralized = false;
+    end
+    if ~decentralized  E = ones(size(E)) ; end
+    K = get_gain(A,B,E,R_,q);
+    %K = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
+    %K = zeros(size(B,2),size(A,1));
+    if isnan(K)
+        toc
+        error 'Could not compute Gains'
+    end
     
     hour = 1;
     day = 0;
@@ -103,24 +106,17 @@ for control_type = 1:1
     % t_settling = 0;
     bus = bus_initial;
     k_ = 1:1440:length(t);
-    % x = zeros(size(A,1),size(t,2));
-    % u = zeros(size(B,2),size(t,2));
-    % u_area = zeros(n_areas,size(t,2));
-    % y = zeros(size(C,1),size(t,2));
-    bus_reactive_power_ren(:,hour) = bus(:,5);
+    x = zeros(size(A,1),size(t,2));
+    u = zeros(size(B,2),size(t,2));
+    u_area = zeros(n_areas,size(t,2));
+    y = zeros(size(C,1),size(t,2));
     t_settling = 0;
     x(:,1) = x0;
     for k = 1:length(t)-1
         
         if(k == k_(hour+1) )
            
-           if hour == 12
-                mask = ones(132,1);
-                %bitand(bus(:,7)<0.5 , 0.3<bus(:,7));
-           end
-           
            hour = hour + 1;
-           bus_reactive_power_ren(:,hour) = bus(:,5);
            flag = 1;
 
            if(24 <= hour -day*24 )
@@ -128,47 +124,47 @@ for control_type = 1:1
                  %K = get_gain(A,B,E,R_,q);
            end
            
-           [A_global,bus,k_tie] = update_dynamics(areas,bus,bus_initial,line,n_areas,A_global,bus_ss,g,network,hour-day*24+1);
-           [A,B,~,W,~,~] = discrete_dynamics(A_global,B_global,C_global,D_global,W_global,E_global,bus_ss,h,n_areas,L);
+           %[A_global,bus,k_tie] = update_dynamics(areas,bus,bus_initial,line,n_areas,A_global,bus_ss,g,network,hour-day*24+1);
+           %[A,B,~,W,~,~] = discrete_dynamics(A_global,B_global,C_global,D_global,W_global,E_global,bus_ss,h,n_areas,L);
             
 
            
-            to_plot(hour,:) = k_tie;
+            %to_plot(hour,:) = k_tie;
         end
 
-        % u(:,k) = -K*x(:,k);
-        % u(:,k) = min(max(u(:,k),-0.1),0.1);
-        % x(:,k+1) = A*x(:,k) + B*u(:,k) + W*w(:,k);
-        % 
-        % y(:,k+1) = C*x(:,k+1);
+        u(:,k) = -K*x(:,k);
+        u(:,k) = min(max(u(:,k),-0.1),0.1);
+        x(:,k+1) = A*x(:,k) + B*u(:,k) + W*w(:,k);
+
+        y(:,k+1) = C*x(:,k+1);
 
 
 
         
-        % y(1:3:end-n_areas,k) = min(max(y(1:3:end-n_areas,k),-freq_limit),freq_limit);
-        % 
-        % %Controller performance metric
-        % %all(abs(y(1:3:end-n_areas,k+1)) < 1e-9)
-        % if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
-        %     t_settling = ((k-k_(hour))*h );
-        %     time_settling(1,hour) =  t_settling;
-        %     flag = 0;
-        % 
-        % end
-        % 
-        % 
-        % %Get the control action per area
-        % for i=1:n_areas
-        %     u_area(i,k) = sum(u(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+bus_ss(i,3),3));
-        % end
+        y(1:3:end-n_areas,k) = min(max(y(1:3:end-n_areas,k),-freq_limit),freq_limit);
+
+        %Controller performance metric
+        %all(abs(y(1:3:end-n_areas,k+1)) < 1e-9)
+        if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
+            t_settling = ((k-k_(hour))*h );
+            time_settling(1,hour) =  t_settling;
+            flag = 0;
+
+        end
+
+
+        %Get the control action per area
+        for i=1:n_areas
+            u_area(i,k) = sum(u(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+bus_ss(i,3),3));
+        end
 
     end
 
-    % disp_cost_area(control_type,:) = sum(u_area(1:end,:),2);
-    % disp_cost_machine(control_type,:) = sum(u(1:end,:),2);
-    % frequency_error_cost(control_type,:) = sum(abs(y(1:3:end-n_areas,:)),2)';
-    % time_settling_cost(control_type,:) = time_settling;
-    % y = y';
+    disp_cost_area(control_type,:) = sum(u_area(1:end,:),2);
+    disp_cost_machine(control_type,:) = sum(u(1:end,:),2);
+    frequency_error_cost(control_type,:) = sum(abs(y(1:3:end-n_areas,:)),2)';
+    time_settling_cost(control_type,:) = time_settling;
+    y = y';
 
 
    
@@ -196,60 +192,6 @@ for i =1:n_areas
 
 
 end
-%%
-figure
-set(gca,'FontSize',20);
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-plot(sqrt(covariances),'LineWidth',1.5);
-%legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
-%y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
-ylabel('$\sigma$','interpreter','latex');
-xlabel('$area$','Interpreter','latex');
-xlim([0 35.2])
-hold off
-set(gcf,'renderer','Painters');
-title = sprintf('./fig/cov_%d.eps',simulation_hours);
-saveas(gca,title,'epsc');
-
- 
-
-figure
-set(gca,'FontSize',20);
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-xlim([0 35.2])
-plot(means,'LineWidth',1.5);
-%legend('$\sigma_1$','$\sigma_2}$','$\sigma_3}$','Interpreter','latex')
-%y_label = sprintf('$T_{{tie}_{%d,k}} - T_{{tie}_{%d,0}}$',i,i);
-ylabel('$\mu$','interpreter','latex');
-xlabel('$area$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title = sprintf('./fig/mean_%d.eps',simulation_hours);
-saveas(gca,title,'epsc');
-
-
-figure
-set(gca,'FontSize',20);
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-plot(1:simulation_hours,bus_reactive_power_ren(119:end,:),'LineWidth',1.5);
-ylabel('$Q_G$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title = './fig/Q_gen.png';
-saveas(gca,title,'png');
-
-
-
 
 
 %%

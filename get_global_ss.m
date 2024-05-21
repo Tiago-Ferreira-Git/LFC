@@ -1,4 +1,4 @@
-function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_ss] = get_global_ss(g,bus,nr_areas,flag_u)
+function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_ss] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren)
 
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
@@ -209,7 +209,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
         
         
         %Add renewables state
-        if any(ismember(network(i).bus,ren_data.bus))
+        if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
             A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
             A(1,end) = B_freq;
             Tpv = 1.8;
@@ -308,6 +308,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
     D_global = zeros(size(C_global,1),size(B_global,2));
 
     %L = Adjacency_matrix;
+
     g = graph(Adjacency_matrix);
     plot(g)
     set(gcf,'renderer','Painters');

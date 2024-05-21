@@ -1,6 +1,6 @@
 
 clearvars -except path; close all; clc;
-%run('plot_options');
+%run('../plot_options');
 addpath('../../pstess/')
 
 [g,bus,line] = get_g('IEEE_bus_118_res');
@@ -13,7 +13,8 @@ bus(buses_with_generation,11) = 9999;
 bus(buses_with_generation,12) = -9999;
 bus(119:end,11) = 0.001;
 bus(119:end,12) = -0.001;
-
+bus(:,6) = 0;
+bus(:,7) = 0;
 
 [bus,line,line_flw] = loadflow(bus,line,tol,itermax,acc,'n',2);
 
@@ -21,9 +22,9 @@ bus_initial = bus;
 clearvars -except g bus t line bus_initial
 
 
-n_areas = 35;
+n_areas = 30;
 %n_areas = 3;
-[A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss] = get_global_ss(g,bus,n_areas,0);
+[A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss] = get_global_ss(g,bus,n_areas,0,1);
 
 
 
@@ -35,13 +36,13 @@ C_angle = zeros(n_areas,size(C,2));
 C_angle(1:n_areas,end-n_areas+1:end) = -eye(n_areas);
 C = [C ; C_angle];
 %%
-plot_network(areas,line,n_areas);
+%plot_network(areas,line,n_areas);
 
 %%
 tic
 
 
-simulation_hours = 4800;
+simulation_hours = 24;
 t = 0:h:3600*simulation_hours;
 %7*24*3600;
 
@@ -72,8 +73,12 @@ q(1,size(A_global,1)+1:end) = 10;
 % disp_cost_machine = zeros(2,size(B,2));
 % disp_cost_area = zeros(2,n_areas);
 % time_settling_cost = zeros(2,simulation_hours);
-% to_plot = zeros(simulation_hours,n_areas);
-% bus_reactive_power_ren = zeros(132,simulation_hours);
+to_plot = zeros(simulation_hours,n_areas);
+bus_reactive_power_ren = zeros(132,simulation_hours);
+bus_active_power_ren = zeros(132,simulation_hours);
+
+bus_active_power_consumption = zeros(132,simulation_hours);
+bus_reactive_power_consumption = zeros(132,simulation_hours);
 
 
 %Frequency output limit according to [1] 
@@ -87,7 +92,7 @@ for control_type = 1:1
     %     decentralized = false;
     % end
     % if ~decentralized  E = ones(size(E)) ; end
-    % K = get_gain(A,B,E,R_,q);
+    %K = get_gain(A,B,E,R_,q);
     % if isnan(K)
     %     toc
     %     error 'Could not compute Gains'
@@ -103,18 +108,30 @@ for control_type = 1:1
     % u = zeros(size(B,2),size(t,2));
     % u_area = zeros(n_areas,size(t,2));
     % y = zeros(size(C,1),size(t,2));
+    bus_reactive_power_ren(:,hour) = bus(:,5);
     t_settling = 0;
     x(:,1) = x0;
     for k = 1:length(t)-1
         
         if(k == k_(hour+1) )
-           bus_reactive_power_ren(:,hour) = bus(:,5);
+           
            if hour == 12
                 mask = ones(132,1);
                 %bitand(bus(:,7)<0.5 , 0.3<bus(:,7));
            end
            
            hour = hour + 1;
+
+           bus_active_power_ren(:,hour) = bus(:,4);
+           bus_reactive_power_ren(:,hour) = bus(:,5);
+           
+            
+           bus_active_power_consumption(:,hour) = bus(:,6);
+           bus_reactive_power_consumption(:,hour) = bus(:,7);
+           
+           
+           
+           
            flag = 1;
 
            if(24 <= hour -day*24 )
@@ -175,24 +192,40 @@ for i =1:n_areas
     covariances(i) = cov(to_plot(2:end-3,i));
     means(i) = mean(to_plot(2:end-3,i));
 
-    % title = sprintf('./fig/K_tie_%d_%d.png',i,simulation_hours);
-    % figure
-    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    % hold on
-    % grid on
-    % box on;
-    % plot(1:simulation_hours-5,to_plot(2:end-4,i)-to_plot(2,i),'LineWidth',1.5);
-    % ylabel('$T_{{tie}_{i}} - T_{{tie}_{i,0}}$ ','interpreter','latex');
-    % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-    % hold off
-    % set(gcf,'renderer','Painters');
-    % saveas(gca,title,'png');
-
-
 end
+mask = any((to_plot(2:end,:)-to_plot(2,:)) > 200);
+title = sprintf('./fig/delta_K_tie_%d.png',i);
+figure
+set(gca,'FontSize',17);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours-1,to_plot(2:end,mask)-to_plot(2,mask),'LineWidth',1.5);
+ylabel('$T_{{tie}_{i}} - T_{{tie}_{i,0}}$ ','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+saveas(gca,title,'png');
+
+
+title = sprintf('./fig/K_ties_%d.png',i);
+figure
+set(gca,'FontSize',17);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours-1,to_plot(2:end,mask),'LineWidth',1.5);
+ylabel('$T_{{tie}_{i}} $ ','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+saveas(gca,title,'png');
+
 %%
 figure
-set(gca,'FontSize',20);
+set(gca,'FontSize',17);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
@@ -205,13 +238,15 @@ xlabel('$area$','Interpreter','latex');
 xlim([0 35.2])
 hold off
 set(gcf,'renderer','Painters');
-title = sprintf('./fig/K_tie_%d_%d.eps',10000,simulation_hours);
+title = sprintf('./fig/cov_%d.eps',simulation_hours);
 saveas(gca,title,'epsc');
+title = sprintf('./fig/cov_%d.png',simulation_hours);
+saveas(gca,title,'png');
 
-
+ 
 
 figure
-set(gca,'FontSize',20);
+set(gca,'FontSize',17);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
@@ -224,12 +259,14 @@ ylabel('$\mu$','interpreter','latex');
 xlabel('$area$','Interpreter','latex');
 hold off
 set(gcf,'renderer','Painters');
-title = sprintf('./fig/K_tie_%d_%d.eps',10123,simulation_hours);
+title = sprintf('./fig/mean_%d.eps',simulation_hours);
 saveas(gca,title,'epsc');
+title = sprintf('./fig/mean_%d.png',simulation_hours);
+saveas(gca,title,'png');
 
-%%
+
 figure
-set(gca,'FontSize',20);
+set(gca,'FontSize',17);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
@@ -243,7 +280,55 @@ title = './fig/Q_gen.png';
 saveas(gca,title,'png');
 
 
+figure
+set(gca,'FontSize',17);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours,bus_active_power_ren(119:end,:),'LineWidth',1.5);
+ylabel('$P_G$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title = './fig/P_gen.png';
+saveas(gca,title,'png');
 
+
+
+%%
+figure
+set(gca,'FontSize',17);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours,bus_reactive_power_consumption,'LineWidth',1.5);
+ylabel('$Q_L$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title = './fig/Q_con.png';
+saveas(gca,title,'png');
+
+
+
+figure
+set(gca,'FontSize',17);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours,bus_active_power_consumption,'LineWidth',1.5);
+ylabel('$P_L$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title = './fig/P_con.png';
+saveas(gca,title,'png');
+
+
+return
 
 
 %%

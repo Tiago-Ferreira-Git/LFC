@@ -6,8 +6,10 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours)
     w_ren_hour = w_ren_hour.w_ren(:,1:24);
 
     if size(w_load_hour,1) < n_areas 
-        w_load_hour = [w_load_hour; w_load_hour(1:n_areas-size(w_load_hour,1),:)];
-        w_ren_hour = [w_ren_hour; w_ren_hour(1:n_areas-size(w_ren_hour,1),:)];
+        w_load_hour = [repmat(w_load_hour, floor(n_areas/size(w_load_hour,1)), 1); ...
+                        w_load_hour(1:mod(n_areas, size(w_load_hour,1)),:)];
+        w_ren_hour = [repmat(w_ren_hour, floor(n_areas/size(w_ren_hour,1)), 1); ...
+                        w_ren_hour(1:mod(n_areas, size(w_ren_hour,1)),:)];
     else 
         w_load_hour = w_load_hour(1:n_areas,:);
         w_ren_hour = w_ren_hour(1:n_areas,:);
