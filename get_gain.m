@@ -1,15 +1,7 @@
-function [K] = get_gain(A,B,E,R_,weight_freq)
-   
-    ctrbM = ctrb(A,B); % controlability matrix
+function [K] = get_gain(A,B,E,R_,weight_freq,W,n_NC)
 
-    r = rank(ctrbM);
+    r = size(A,1) - n_NC;
     Z = size(A,1);
-    H = orth(ctrbM);
-    V = null(H');
-    W = [H V];
- 
-
-
     A_hat = W\A*W;
     Bg_hat = W\B; 
     Bg1_hat = [eye(r) zeros(r,Z-r)]*Bg_hat;

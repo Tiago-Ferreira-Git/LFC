@@ -1,4 +1,4 @@
-function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_ss] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren)
+function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren)
 
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
@@ -136,11 +136,13 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
     B_global = [];
     C_global = [];
     W_global = [];
+
+    ren_ss = zeros(1,size(ren_data.bus,1));
     
 
     u = [];
     s = tf('s');
-
+    k = 1;
     for i=1:length(network)
         u_area = [];
         % if flag_u
@@ -223,6 +225,8 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
             W = zeros(size(B,1),2);
             W(1) = B_freq;
             W(end-1) = Kpv/Tpv;
+            ren_ss(k) = size(A_global,1)+size(A,1);
+            k = k+1;
         else 
             %u does not influence delta freq, p_tie
             B =  [ zeros(1,size(B_area,2)); B_area ; zeros(1,size(B_area,2)) ];
@@ -314,5 +318,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
     set(gcf,'renderer','Painters');
     title='./fig/graph.png';
     saveas(gca,title,'png');
+
+    rows_NC = ren_ss;
 end
 
