@@ -1,9 +1,12 @@
-function w = get_disturbance_profile(w,h,n_areas,simulation_hours)
+function w = get_disturbance_profile(w,h,n_areas,simulation_hours,areas)
     w_load_hour = load('data\w_load.mat');
     w_load_hour = w_load_hour.w_load(:,1:24);
     
     w_ren_hour = load('data\w_ren.mat');
     w_ren_hour = w_ren_hour.w_ren(:,1:24);
+
+
+    
 
     if size(w_load_hour,1) < n_areas 
         w_load_hour = [repmat(w_load_hour, floor(n_areas/size(w_load_hour,1)), 1); ...

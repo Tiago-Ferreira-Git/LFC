@@ -18,6 +18,6 @@ function [K] = get_gain(A,B,E,R_,weight_freq,W,n_NC)
         W*[eye(r) ;zeros(Z-r,r)];
     R = R_*eye(size(B,2));
     
-    K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,3e3,1e-5,A,B,r,Z,W);
+    K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,500e3,1e-5,A,B,r,Z,W);
 end
 

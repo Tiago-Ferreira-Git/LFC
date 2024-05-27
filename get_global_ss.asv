@@ -211,7 +211,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
         
         %Add renewables state
         if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
-            n_ren = sum(ismember(network(i).bus,ren_data.bus)) ;
+            n_ren = sum(ismember(network(i).bus,ren_data.bus)) 
             for j = 1:n_ren
                 A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
                 A(1,end) = B_freq;
@@ -222,9 +222,8 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
                 %u does not influence   ren 
                 B = [B; zeros(1,size(B_area,2))];
                 
-                %CHANGE THIS LINE 
-                concat = [size(A_global,1)+size(A,1); i];
-                ren_ss  = [ren_ss concat];
+                concat = [size(A_global,1)+size(A,1) ;
+                ren_ss  = [ren_ss ];
 
             end
             

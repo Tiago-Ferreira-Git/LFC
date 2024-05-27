@@ -23,23 +23,23 @@ clearvars -except g bus t line bus_initial
 
 n_areas = 250;
 %n_areas = 20;
-n_areas = 30;
+n_areas = 3;
 
 
 [A_global,B_global,C,D,W_global,~,E,L,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,n_areas,0,1,1);
-n_ren = size(rows_NC,2);
-B = B_global;
-check_rank = [B A_global*B (A_global^2)*B (A_global^3)*B (A_global^4)*B_global (A_global^5)*B_global (A_global^6)*B_global (A_global^7)*B_global (A_global^7)*B_global (A_global^8)*B_global (A_global^9)*B_global (A_global^10)*B_global] ;
+
+B = sum(B_global,2);
+
+check_rank = [B A_global*B (A_global^2)*B (A_global^3)*B ] ;
 
 %(A_global^4)*B_global (A_global^5)*B_global (A_global^6)*B_global (A_global^7)*B_global (A_global^7)*B_global (A_global^8)*B_global (A_global^9)*B_global (A_global^10)*B_global
 
 
-n = sum(sum(check_rank==0,2)==size(check_rank,2))
-n_ren
+n = sum(sum(teste==0,2)==size(teste,2))
 h = 2.5;
 
 [A,B,W] = discrete_dynamics(A_global,B_global,W_global,h,L);
-W_ = permute_matrix(A,rows_NC(1,:));
+W_ = permute_matrix(A,rows_NC);
 
 %plot_network(areas,line,n_areas);
 
@@ -56,7 +56,7 @@ x0 = zeros(size(A,1),1);
 
 mask = t > 30;
 
-w = get_disturbance_profile(w,h,n_areas,simulation_hours,rows_NC(:,2));
+w = get_disturbance_profile(w,h,n_areas,simulation_hours);
 
 R_ = 0.01;
 
