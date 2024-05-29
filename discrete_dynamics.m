@@ -1,4 +1,4 @@
-function [A,B,W,L] = discrete_dynamics(A_global,B_global,W_global,h,L)
+function [A,B,W] = discrete_dynamics(A_global,B_global,W_global,h)
     
     
     G = expm([A_global W_global; zeros(size(W_global,2),size(A_global,2)) zeros(size(W_global,2),size(W_global,2))]*h);

@@ -4,7 +4,7 @@ run('../plot_options');
 addpath('../../pstess/')
 
 [g,bus,line] = get_g('data3');
-[g,bus,line] = get_g('AutoSynGrid_3000');
+%[g,bus,line] = get_g('AutoSynGrid_3000');
 [g,bus,line] = get_g('IEEE_bus_118');
 
 % bus(bus(:,10)==2,11) = 0;
@@ -25,8 +25,10 @@ n_areas = 250;
 %n_areas = 20;
 n_areas = 30;
 
+flag_integrator = 1;
 
-[A_global,B_global,C,D,W_global,~,E,L,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,n_areas,0,1,1);
+
+[A_global,B_global,C,D,W_global,E,~,g,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,n_areas,0,1,flag_integrator);
 n_ren = size(rows_NC,2);
 B = B_global;
 check_rank = [B A_global*B (A_global^2)*B (A_global^3)*B (A_global^4)*B_global (A_global^5)*B_global (A_global^6)*B_global (A_global^7)*B_global (A_global^7)*B_global (A_global^8)*B_global (A_global^9)*B_global (A_global^10)*B_global] ;
@@ -38,8 +40,8 @@ n = sum(sum(check_rank==0,2)==size(check_rank,2))
 n_ren
 h = 2.5;
 
-[A,B,W] = discrete_dynamics(A_global,B_global,W_global,h,L);
-W_ = permute_matrix(A,rows_NC(1,:));
+[A,B,W] = discrete_dynamics(A_global,B_global,W_global,h);
+W_ = permute_matrix(A,rows_NC);
 
 %plot_network(areas,line,n_areas);
 
@@ -56,12 +58,18 @@ x0 = zeros(size(A,1),1);
 
 mask = t > 30;
 
-w = get_disturbance_profile(w,h,n_areas,simulation_hours,rows_NC(:,2));
+w = get_disturbance_profile(w,h,n_areas,simulation_hours,g.n_ren);
 
 R_ = 0.01;
 
-q = sum(C(1:4:end,:),1);
-q = q + -10*sum(C(3:4:end,:),1);
+if flag_integrator
+    q = sum(C(1:4:end,:),1);
+else
+    q = sum(C(1:3:end,:),1);
+end
+if flag_integrator
+    q = q + -10*sum(C(3:4:end,:),1);
+end
 
 
 
@@ -134,29 +142,29 @@ for control_type = 1:1
 
 
         
-        y(1:4:end-n_areas,k) = min(max(y(1:4:end-n_areas,k),-freq_limit),freq_limit);
-
-        %Controller performance metric
-        %all(abs(y(1:3:end-n_areas,k+1)) < 1e-9)
-        if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
-            t_settling = ((k-k_(hour))*h );
-            time_settling(1,hour) =  t_settling;
-            flag = 0;
-
-        end
+        % y(1:4:end-n_areas,k) = min(max(y(1:4:end-n_areas,k),-freq_limit),freq_limit);
+        % 
+        % %Controller performance metric
+        % %all(abs(y(1:3:end-n_areas,k+1)) < 1e-9)
+        % if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
+        %     t_settling = ((k-k_(hour))*h );
+        %     time_settling(1,hour) =  t_settling;
+        %     flag = 0;
+        % 
+        % end
 
 
         %Get the control action per area
-        for i=1:n_areas
-            u_area(i,k) = sum(u(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+bus_ss(i,3),3));
-        end
+        % for i=1:n_areas
+        %     u_area(i,k) = sum(u(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+bus_ss(i,3),3));
+        % end
 
     end
 
-    disp_cost_area(control_type,:) = sum(u_area(1:end,:),2);
-    disp_cost_machine(control_type,:) = sum(u(1:end,:),2);
-    frequency_error_cost(control_type,:) = sum(abs(y(1:3:end-n_areas,:)),2)';
-    time_settling_cost(control_type,:) = time_settling;
+    % disp_cost_area(control_type,:) = sum(u_area(1:end,:),2);
+    % disp_cost_machine(control_type,:) = sum(u(1:end,:),2);
+    % frequency_error_cost(control_type,:) = sum(abs(y(1:3:end-n_areas,:)),2)';
+    % time_settling_cost(control_type,:) = time_settling;
     y = y';
 
 
@@ -286,10 +294,18 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t,y(:,1:4:end),'LineWidth',1.5);
+
+if flag_integrator
+    stairs(t,y(:,1:4:end),'LineWidth',1.5);
+    ylim([min(min(y(:,1:4:end)))*1.3,max(max(y(:,1:4:end)))*1.3])
+else
+    stairs(t,y(:,1:3:end),'LineWidth',1.5);
+    ylim([min(min(y(:,1:3:end)))*1.3,max(max(y(:,1:3:end)))*1.3])
+end
+
 yline(freq_limit,'--');
 yline(-freq_limit,'--');
-ylim([min(min(y(:,1:4:end-n_areas)))*1.3,max(max(y(:,1:4:end-n_areas)))*1.3])
+
 legend('$\Delta\omega_1$','$\Delta\omega_2$','$\Delta\omega_3$','Interpreter','latex')
 ylabel('$\Delta\omega$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
@@ -306,7 +322,11 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t,y(:,2:4:end),'LineWidth',1.5);
+if flag_integrator
+    stairs(t,y(:,2:4:end),'LineWidth',1.5);
+else
+    stairs(t,y(:,2:3:end),'LineWidth',1.5);
+end
 legend('$\Delta P_{m_1}$','$\Delta P_{m_2}$','$\Delta P_{m_3}$','Interpreter','latex')
 ylabel('$\Delta P_{m}$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
@@ -318,27 +338,34 @@ saveas(gca,title,'png');
 
 
 
+if flag_integrator
+    figure
+    set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    hold on
+    grid on
+    box on;
+    stairs(t,y(:,3:4:end),'LineWidth',1.5);
+    
+    legend('$\Delta \delta_{1}$','$\Delta \delta_{2}$','$\Delta \delta_{3}$','Interpreter','latex')
+    ylabel('$\Delta \delta$ (pu)','interpreter','latex');
+    xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+    hold off
+    set(gcf,'renderer','Painters');
+    title='./fig/delta.png';
+    saveas(gca,title,'png');
+end
+
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t,y(:,3:4:end),'LineWidth',1.5);
-legend('$\Delta \delta_{1}$','$\Delta \delta_{2}$','$\Delta \delta_{3}$','Interpreter','latex')
-ylabel('$\Delta \delta$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title='./fig/delta.png';
-saveas(gca,title,'png');
 
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t,y(:,4:4:end),'LineWidth',1.5);
+if flag_integrator
+    stairs(t,y(:,4:4:end),'LineWidth',1.5);
+else
+    stairs(t,y(:,3:3:end),'LineWidth',1.5);
+end
 legend('$\Delta P_{{tie}_1}$','$\Delta P_{{tie}_2}$','$\Delta P_{{tie}_3}$','Interpreter','latex')
 ylabel('$\Delta P_{tie}$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
@@ -350,36 +377,6 @@ saveas(gca,title,'png');
 
 
 
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t,w(1:2:end,:)','LineWidth',1.5);
-legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
-ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title='./fig/delta_p_load.png';
-saveas(gca,title,'png');
-
-
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t,w(2:2:end,:)','LineWidth',1.5);
-legend('$\Delta P_{{ren}_1}$','$\Delta P_{{ren}_2}$','$\Delta P_{{ren}_3}$','Interpreter','latex')
-ylabel('$\Delta P_{ren}$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-hold off
-set(gcf,'renderer','Painters');
-title='./fig/p_ren.png';
-saveas(gca,title,'png');
 
 
 

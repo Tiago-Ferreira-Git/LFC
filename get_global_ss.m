@@ -1,4 +1,4 @@
-function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren,flag_integrator)
+function [A_global,B_global,C_global,D_global,W_global,E,u,g,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren,flag_integrator)
 
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
@@ -6,7 +6,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
     if ~flag_u
         u = nan;
     end
-    base_mva = 100;
+    base_mva = 100
     k = nr_areas; %three areas
     
     areas = area_partitioning(g.line,k,g.mac.mac_con(:,2));
@@ -142,6 +142,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
 
     u = [];
     s = tf('s');
+    g.n_ren = zeros(1,length(network));
     for i=1:length(network)
         u_area = [];
         % if flag_u
@@ -212,6 +213,8 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
         %Add renewables state
         if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
             n_ren = sum(ismember(network(i).bus,ren_data.bus)) ;
+            g.n_ren(i) = n_ren;
+
             for j = 1:n_ren
                 A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
                 A(1,end) = B_freq;
@@ -222,9 +225,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
                 %u does not influence   ren 
                 B = [B; zeros(1,size(B_area,2))];
                 
-                %CHANGE THIS LINE 
-                concat = [size(A_global,1)+size(A,1); i];
-                ren_ss  = [ren_ss concat];
+                ren_ss  = [ren_ss size(A_global,1)+size(A,1)];
 
             end
             
@@ -331,8 +332,8 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,L,areas,network,bus_s
 
     %L = Adjacency_matrix;
 
-    g = graph(Adjacency_matrix);
-    plot(g)
+    network_graph = graph(Adjacency_matrix);
+    plot(network_graph)
     set(gcf,'renderer','Painters');
     title='./fig/graph.png';
     saveas(gca,title,'png');
