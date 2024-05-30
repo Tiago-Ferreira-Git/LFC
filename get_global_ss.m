@@ -6,7 +6,7 @@ function [A_global,B_global,C_global,D_global,W_global,E,u,g,areas,network,bus_s
     if ~flag_u
         u = nan;
     end
-    base_mva = 100
+    base_mva = 100;
     k = nr_areas; %three areas
     
     areas = area_partitioning(g.line,k,g.mac.mac_con(:,2));
@@ -285,8 +285,7 @@ function [A_global,B_global,C_global,D_global,W_global,E,u,g,areas,network,bus_s
         W_global = [W_global zeros(size(W_global,1), size(W,2)); zeros(size(W,1), size(W_global,2)) W];
     end
     
-    
-    %%
+   
 
     bus_sol = bus;
     bus_sol(:,3) = deg2rad(bus(:,3));
@@ -330,8 +329,6 @@ function [A_global,B_global,C_global,D_global,W_global,E,u,g,areas,network,bus_s
    
     D_global = zeros(size(C_global,1),size(B_global,2));
 
-    %L = Adjacency_matrix;
-
     network_graph = graph(Adjacency_matrix);
     plot(network_graph)
     set(gcf,'renderer','Painters');
@@ -339,5 +336,27 @@ function [A_global,B_global,C_global,D_global,W_global,E,u,g,areas,network,bus_s
     saveas(gca,title,'png');
 
     rows_NC = ren_ss;
+
+    % s = ones(1,size(A_global,1));
+    % s(1,cumsum(bus_ss(:,2))) = 100;
+    % S = diag(s);
+    % A_global = S\A_global*S;
+    % B_global = S\B_global; 
+    % C_global = C_global*S; 
+
+
+    % S = diag(max(abs(A_global),[],2))
+    % A_global = S\A_global*S;
+    % B_global = S\B_global; 
+    % C_global = C_global*S; 
+
+    % max(A_global)/min(A_global)
+    % G = ss(A_global,B_global,C_global,D_global);
+    % Gn = ssbal(G);
+    % max(Gn.A)/min(Gn.A)
+    % A_global = Gn.A;
+    % B_global = Gn.B;
+    % C_global = Gn.C;
+    % D_global = Gn.D;
 end
 

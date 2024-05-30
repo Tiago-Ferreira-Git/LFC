@@ -44,6 +44,10 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,areas)
        end
     end
     
+    if areas(n_areas) ~= 0
+        ren_index(k:k+areas(n_areas)-1) = load_index(n_areas)+1:load_index(n_areas)+areas(n_areas);
+        k = k + areas(i);
+    end
    
 
 

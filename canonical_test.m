@@ -25,7 +25,7 @@ n_areas = 250;
 %n_areas = 20;
 n_areas = 30;
 
-flag_integrator = 1;
+flag_integrator = 0;
 
 
 [A_global,B_global,C,D,W_global,E,~,g,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,n_areas,0,1,flag_integrator);
