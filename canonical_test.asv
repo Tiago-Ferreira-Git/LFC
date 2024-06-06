@@ -4,7 +4,7 @@ run('../plot_options');
 addpath('../../pstess/')
 
 [g,bus,line] = get_g('data3');
-%[g,bus,line] = get_g('IEEE_bus_118');
+[g,bus,line] = get_g('IEEE_bus_118');
 %[g,bus,line] = get_g('AutoSynGrid_3000');
 % bus(bus(:,10)==2,11) = 0;
 % bus(bus(:,10)==2,12) = 0;
@@ -25,7 +25,7 @@ flag_plot_metrics = 0;
 
 
 n_areas = 250;
-n_areas = 3;
+%n_areas = 30;
 [A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,0,flag_ren,flag_integrator);
 
 

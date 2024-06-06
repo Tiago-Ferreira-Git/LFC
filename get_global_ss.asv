@@ -385,7 +385,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
 
 
     s = ones(1,size(A_global,1));
-    s(1,cumsum(bus_ss(1:end-1,2))) = 1000;
+    s(1,cumsum(bus_ss(:,2))) = 1000;
     S = diag(s);
     A_global = S\A_global*S;
     B_global = S\B_global; 
