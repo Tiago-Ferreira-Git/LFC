@@ -11,6 +11,7 @@ function [A,B,W] = discrete_dynamics(A_global,B_global,W_global,h)
 
     A = G(1:size(A_global,1),1:size(A_global,2));
     
+<<<<<<< HEAD
 
     % D_global = zeros(size(A,1),size(B_global,2));
     % 
@@ -20,5 +21,10 @@ function [A,B,W] = discrete_dynamics(A_global,B_global,W_global,h)
     % sys = ss(A_global,B_global,eye(size(A,1)),D_global);
     % sys = c2d(sys,h);
 
+=======
+    % sys = ss(A_global,B_global,C_global,D_global);
+    % sys = c2d(sys,h);
+    
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 
 end

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren,flag_integrator)
+=======
+function [A_global,B_global,C_global,D_global,W_global,E,u,g,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren,flag_integrator)
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
@@ -138,16 +142,22 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
     B_global = [];
     C_global = [];
     W_global = [];
+
+    ren_ss = [];
     
 
     u = [];
     s = tf('s');
+<<<<<<< HEAD
     k = 1;
     if flag_ren
         ren_ss = zeros(1,size(ren_data.bus,1));
     else
         ren_ss = [];
     end
+=======
+    g.n_ren = zeros(1,length(network));
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
     for i=1:length(network)
         u_area = [];
         % if flag_u
@@ -208,15 +218,22 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         
         freq_feedback = zeros(size(B_area,1),1);
         freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+<<<<<<< HEAD
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
+=======
+        A = [A_freq B_freq.*C_area ; freq_feedback A_area];
+        B =  [ zeros(1,size(B_area,2)); B_area];
+    
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 
         B =  [ zeros(1,size(B_area,2)); B_area];
         
-        
+
         
         %Add renewables state
         if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
+<<<<<<< HEAD
             index = size(A_global,1) + size(A,1);
             
             n_ren = sum(ismember(network(i).bus,ren_data.bus)) ;
@@ -240,15 +257,54 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
             A(end,1) = -1;
             B = [B; zeros(1,size(B_area,2))];
+=======
+            n_ren = sum(ismember(network(i).bus,ren_data.bus)) ;
+            g.n_ren(i) = n_ren;
+
+            for j = 1:n_ren
+                A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
+                A(1,end) = B_freq;
+                Tpv = 1.8;
+                Kpv = 1;
+                A(end,end) = -1/Tpv;
+    
+                %u does not influence   ren 
+                B = [B; zeros(1,size(B_area,2))];
+                
+                ren_ss  = [ren_ss size(A_global,1)+size(A,1)];
+
+            end
+            
+
+        end
+
+
+         %Add error integrator
+
+        if(flag_integrator)
+            A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
+            A(end,1) = -1;
+            B = [B; zeros(1,size(B_area,2))];
+
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
         end
 
         %Add tie-line state
         A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
         A(1,end) = -B_freq;
+<<<<<<< HEAD
         B = [B; zeros(1,size(B_area,2))];
 
+=======
+        %u does not influence delta freq, p_tie
+        B =  [B; zeros(1,size(B_area,2)) ];
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 
+        %Load disturbance 
+        W = zeros(size(B,1),1+n_ren);
+        W(1) = B_freq;
         
+<<<<<<< HEAD
         W = zeros(size(B,1),n_ren+1);
 
         %Load disturbance
@@ -272,13 +328,33 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
             C(3,end) = 1;
             C(4,end-1) = -1;
+=======
+        if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
+            W(size(B,1)-n_ren:end-1,2:end) = eye(n_ren)*Kpv/Tpv;
+        end
+
+
+        if((flag_integrator))
+            
+            C = zeros(4,size(A,1));
+            C(1,1) = 1;
+            C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
+            C(3,end-1) = -1;
+            C(4,end) = 1;
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
         else
             C = zeros(3,size(A,1));
             C(1,1) = 1;
             C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
             C(3,end) = 1;
         end
+<<<<<<< HEAD
 
+=======
+
+
+        
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
         if flag_u
             u = [u;u_area];
         end
@@ -291,8 +367,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         W_global = [W_global zeros(size(W_global,1), size(W,2)); zeros(size(W,1), size(W_global,2)) W];
     end
     
-    
-    %%
+   
 
     bus_sol = bus;
     bus_sol(:,3) = deg2rad(bus(:,3));
@@ -365,23 +440,30 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
 
     D_global = zeros(size(C_global,1),size(B_global,2));
 
-    %L = Adjacency_matrix;
-
-    g = graph(Adjacency_matrix);
-    plot(g)
+    network_graph = graph(Adjacency_matrix);
+    plot(network_graph)
     set(gcf,'renderer','Painters');
     title='./fig/graph.png';
     saveas(gca,title,'png');
 
+<<<<<<< HEAD
 
     % [~,S,~] = svd(A_global);
     
     %S = diag(max(abs(A_global),[],2));
+=======
+    rows_NC = ren_ss;
+
+    % s = ones(1,size(A_global,1));
+    % s(1,cumsum(bus_ss(:,2))) = 100;
+    % S = diag(s);
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
     % A_global = S\A_global*S;
     % B_global = S\B_global; 
     % C_global = C_global*S; 
 
 
+<<<<<<< HEAD
 
 
     s = ones(1,size(A_global,1));
@@ -413,5 +495,20 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
 % Wc = gram(Gn,'c');
 
 
+=======
+    % S = diag(max(abs(A_global),[],2))
+    % A_global = S\A_global*S;
+    % B_global = S\B_global; 
+    % C_global = C_global*S; 
+
+    % max(A_global)/min(A_global)
+    % G = ss(A_global,B_global,C_global,D_global);
+    % Gn = ssbal(G);
+    % max(Gn.A)/min(Gn.A)
+    % A_global = Gn.A;
+    % B_global = Gn.B;
+    % C_global = Gn.C;
+    % D_global = Gn.D;
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 end
 

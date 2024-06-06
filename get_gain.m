@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 function [K] = get_gain(A,B,E,R_,weight_freq,W,r)
     Z = size(A,1);
     ctrbM = ctrb(A,B);
@@ -15,6 +16,20 @@ function [K] = get_gain(A,B,E,R_,weight_freq,W,r)
     min(A,[],'all')
     max(ctrbM,[],'all')
     min(ctrbM,[],'all')
+=======
+function [K] = get_gain(A,B,E,R_,weight_freq,W,n_NC)
+
+    % r = size(A,1) - n_NC;
+    % Z = size(A,1);
+
+
+    ctrbM = ctrb(A,B); % controlability matrix
+    r = rank(ctrbM);
+    Z = size(A,1);
+    H = orth(ctrbM);
+    V = null(H');
+    W = [H V];
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 
     A_hat = W\A*W;
     Bg_hat = W\B; 
@@ -39,7 +54,12 @@ function [K] = get_gain(A,B,E,R_,weight_freq,W,r)
     Q = [eye(r) zeros(r,Z-r)]*W'*diag(weight_freq)*...
         W*[eye(r) ;zeros(Z-r,r)];
     R = R_*eye(size(B,2));
+<<<<<<< HEAD
 
     K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,300e3,1e-5,A,B,r,Z,W);
+=======
+    
+    K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,500e3,1e-5,A,B,r,Z,W);
+>>>>>>> 7ed45c8baf499c9855c492ee0bd319b4b80e9d16
 end
 

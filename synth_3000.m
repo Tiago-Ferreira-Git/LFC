@@ -21,7 +21,7 @@ clearvars -except g bus t line bus_initial
 
 n_areas = 100;
 %n_areas = 3;
-[A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss] = get_global_ss(g,bus,n_areas,0,0);
+[A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,n_areas,0,0);
 
 
 
