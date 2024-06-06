@@ -43,8 +43,9 @@ while it > 0 % LQ iterations
     P = [eye(r) zeros(r,Z-r)]*W'*P*W*[eye(r);zeros(Z-r,r)];
     % Check convergence
     it = it-1;
+    
     if abs(trace(P)-trace(Pprev))/trace(Pprev) < epslInf
-        itMax - it
+        it
         break; 
     end
     Pprev = P;

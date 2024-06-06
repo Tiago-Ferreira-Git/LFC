@@ -1,19 +1,24 @@
-function [A,B,W] = discrete_dynamics(A_global,B_global,W_global,h)
+function [A,B,W] = discrete_dynamics(A,B,W,h)
     
     
-    G = expm([A_global W_global; zeros(size(W_global,2),size(A_global,2)) zeros(size(W_global,2),size(W_global,2))]*h);
+    G = expm([A W; zeros(size(W,2),size(A,2)) zeros(size(W,2),size(W,2))]*h);
     
-    W = G(1:size(A_global,1),size(A_global,2)+1:end);
+    W = G(1:size(A,1),size(A,2)+1:end);
     
-    G = expm([A_global B_global; zeros(size(B_global,2),size(A_global,2)) zeros(size(B_global,2),size(B_global,2))]*h);
+    G = expm([A B; zeros(size(B,2),size(A,2)) zeros(size(B,2),size(B,2))]*h);
     
-    B = G(1:size(A_global,1),size(A_global,2)+1:end);
+    B = G(1:size(A,1),size(A,2)+1:end);
 
-    A = G(1:size(A_global,1),1:size(A_global,2));
+    A = G(1:size(A,1),1:size(A,2));
     
-    % sys = ss(A_global,B_global,C_global,D_global);
+
+    % D_global = zeros(size(A,1),size(B_global,2));
+    % 
+    % rank(ctrb(A_global,B_global))
+    % rank(ctrb(A,B))
+    % 
+    % sys = ss(A_global,B_global,eye(size(A,1)),D_global);
     % sys = c2d(sys,h);
-    
+
 
 end
-

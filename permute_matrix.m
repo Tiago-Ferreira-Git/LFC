@@ -1,7 +1,7 @@
 function [W,ss] = permute_matrix(A,rows_to_switch)
     
+    %rows_to_switch - non-controlable rows of matrix A
 
-    
     if size(rows_to_switch,1) > size(A,1)
         error 'Number of non-controllable states greater than matrix dimension'
     end

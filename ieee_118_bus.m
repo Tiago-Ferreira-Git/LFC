@@ -24,15 +24,13 @@ clearvars -except g bus t line bus_initial
 
 n_areas = 30;
 %n_areas = 3;
-[A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss,rows_NC] = get_global_ss(g,bus,n_areas,0,1);
+[A_global,B_global,C_global,D_global,W_global,~,E_global,L,areas,network,bus_ss] = get_global_ss(g,bus,n_areas,0,1);
 
 
 
 h = 2.5;
 
 [A,B,C,W,~,E] = discrete_dynamics(A_global,B_global,C_global,D_global,W_global,E_global,bus_ss,h,n_areas,L);
-W_ = permute_matrix(A,rows_NC);
-
 C_angle = zeros(n_areas,size(C,2));
 
 C_angle(1:n_areas,end-n_areas+1:end) = -eye(n_areas);
@@ -88,17 +86,17 @@ freq_limit = 0.05/50;
 
 for control_type = 1:1
     % Controller gain synthesis 
-    if(control_type==1)
-        decentralized = true;
-    else
-        decentralized = false;
-    end
-    if ~decentralized  E = ones(size(E)) ; end
-    K = get_gain(A,B,E,R_,q,W_,size(rows_NC,2));
-    if isnan(K)
-        toc
-        error 'Could not compute Gains'
-    end
+    % if(control_type==1)
+    %     decentralized = true;
+    % else
+    %     decentralized = false;
+    % end
+    % if ~decentralized  E = ones(size(E)) ; end
+    %K = get_gain(A,B,E,R_,q);
+    % if isnan(K)
+    %     toc
+    %     error 'Could not compute Gains'
+    % end
     
     hour = 1;
     day = 0;

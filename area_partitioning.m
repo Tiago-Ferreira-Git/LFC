@@ -38,7 +38,7 @@ function areas = area_partitioning(lines,k,machine_buses)
             area_bus = find(areas==i);
             if ~any(ismember(area_bus,machine_buses))
                 flag = true;
-                warning 'At least one area without machines'
+                %warning 'At least one area without machines'
                 break
                 %error 'At least one area without machines'
             end
