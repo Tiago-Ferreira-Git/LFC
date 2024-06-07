@@ -1,11 +1,8 @@
-function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,nr_areas,flag_u,flag_ren,flag_integrator)
+function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,nr_areas,flag_ren,flag_integrator)
 
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
 
-    if ~flag_u
-        u = nan;
-    end
     base_mva = 100;
     k = nr_areas; %three areas
     
@@ -34,9 +31,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
                     network(j).damping = network(j).damping + g.mac.mac_con(mask,17);
                     network(j).machines = network(j).machines + 1;
                     network(j).tg_con = [network(j).tg_con ; g.tg.tg_con(g.mac.mac_con(mask,1),:)];
-                    if flag_u   
-                        network(j).tg_sig = [network(j).tg_sig  ;g.tg.tg_sig(g.mac.mac_con(mask,1),:)];
-                    end
+
                     network(j).mac_base = [network(j).mac_base g.mac.mac_con(mask,3)];
                     break
                 end
@@ -150,13 +145,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
     end
     for i=1:length(network)
         u_area = [];
-        % if flag_u
-        %     if( 0 < size(network(i).lmod,1))
-        %         u_area = [u_area ; -sum(g.lmod.lmod_sig(network(i).lmod,:),1)];
-        %     else
-        %         u_area = [u_area ; zeros(1,size(g.lmod.lmod_sig(1,:),2))];
-        %     end
-        % end
+
 
         A_area = [];
         B_area = [];
@@ -167,9 +156,6 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             %p_mech ss
             
             Ts = network(i).tg_con(j,6); Tc = network(i).tg_con(j,7); T3 = network(i).tg_con(j,8); T4 = network(i).tg_con(j,9); T5 = network(i).tg_con(j,10);
-            % T3 = 0;
-            % T4 = 0;
-            % T5=0;
 
             a = Ts + Tc + T5;
             b = Tc*Ts+T5*(Tc+Ts);
@@ -189,9 +175,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             %[A_mech,B_mech,C_mech,~] = tf2ss(sys.Numerator{1},sys.Denominator{1});
             
             %Control signal input
-            if flag_u
-                u_area = [u_area ;  network(i).tg_sig(j,:)];
-            end
+
             
            
             A_area = [A_area zeros(size(A_area,1),size(A_mech,2)) ; zeros(size(A_mech,1),size(A_area,2)) A_mech];
@@ -252,7 +236,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         W = zeros(size(B,1),n_ren+1);
 
         %Load disturbance
-        W(1,1) = B_freq;
+        W(1,1) = -B_freq;
 
 
         % Solar disturbance
@@ -270,8 +254,8 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
 
             C(1,1) = 1;
             C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
-            C(3,end) = 1;
-            C(4,end-1) = -1;
+            %C(3,end) = 1;
+            C(4,end) = -1;
         else
             C = zeros(3,size(A,1));
             C(1,1) = 1;
@@ -279,9 +263,6 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             C(3,end) = 1;
         end
 
-        if flag_u
-            u = [u;u_area];
-        end
         
 
         bus_ss = [bus_ss; i size(A,1) size(network(i).tg_con,1) n_ren B_freq];
@@ -306,6 +287,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
     L = zeros(size(B_global,2),nr_areas);
     index_ss = cumsum(bus_ss(:,2))+1;
     index_ss = [1 ; index_ss];
+    C_index = 3:4:size(C_global,1);
     tg_size = cumsum([ 1 ; bus_ss(:,3)]);
     %tg_size = [1 ; tg_size];
     for i = 1:size(network,2)
@@ -323,7 +305,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             %Default
             %A_global(index_ss(i+1)-1, index_ss(neighbours(j,1))) =  A_global(index_ss(i+1)-1, index_ss(neighbours(j,1)) ) -T_ji;
             
-            %Teste
+            %Changin ptie for error integral
             A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji*bus_ss(i,5);
             
 
@@ -336,14 +318,17 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             L(1+tg_size(i):tg_size(i)+network(i).machines,neighbours(j,1)) = 1;
 
             T_i =  T_i + T_ji;
+
+            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
         L(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+network(i).machines,i) = 1;
         
         %Default
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
-
+        
         A_global(index_ss(i), index_ss(i+1)-1) = T_i*bus_ss(i,5);
+        C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end
 

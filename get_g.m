@@ -1,6 +1,6 @@
 function [g,bus,line] = get_g(data_file)
     % 
-    path_name = '..\..\data\';
+    path_name = 'D:\OneDrive - Universidade de Lisboa\Aulas\Tese\Implementation\RES in PST\data\';
 
 
     run(fullfile(path_name,data_file));

@@ -4,7 +4,7 @@ run('../plot_options');
 addpath('../../pstess/')
 
 [g,bus,line] = get_g('data3');
-%[g,bus,line] = get_g('IEEE_bus_118');
+[g,bus,line] = get_g('IEEE_bus_118');
 %[g,bus,line] = get_g('AutoSynGrid_3000');
 % bus(bus(:,10)==2,11) = 0;
 % bus(bus(:,10)==2,12) = 0;
@@ -20,33 +20,23 @@ bus_initial = bus;
 clearvars -except g bus t line bus_initial
 
 flag_integrator = 1;
-flag_ren = 0;
+flag_ren = 1;
 flag_plot_metrics = 0;
 
 
 n_areas = 250;
-n_areas = 3;
-[A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,0,flag_ren,flag_integrator);
+n_areas = 30;
+[A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,flag_ren,flag_integrator);
 cond(A)
 A_c = A;
-% rank(A_c)
-% rank(ctrb(A,B))
-% max(ctrb(A,B),[],'all')
-% min(ctrb(A,B),[],'all')
 
 %%
 h = 2.5;
 
 [A,B,W] = discrete_dynamics(A,B,W,h);
 
-
-max(svd(A)) 
-
-cond(A)
-
 rank(ctrb(A,B))
-% max(ctrb(A,B),[],'all')
-% min(ctrb(A,B),[],'all')
+
 W_ = permute_matrix(A,ren_ss);
 if isempty(ren_ss)
    W_ = eye(size(A,1));
@@ -63,7 +53,7 @@ n_C = size(A,1) - size(ren_ss,2);
 tic
 
 
-simulation_hours = 5;
+simulation_hours = 24;
 t = 0:h:3600*simulation_hours;
 %7*24*3600;
 
@@ -74,7 +64,7 @@ mask = t > 30;
 
 w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss);
 
-R_ = 0.1;
+R_ = 0.01;
 
 q = zeros(1,size(A,1));
 q(1) = 1;
@@ -107,15 +97,15 @@ for control_type = 1:1
         decentralized = false;
     end
     if ~decentralized  E = ones(size(E)) ; end
-    K  = dlqr(A,B,diag(q),R_*eye(size(B,2)));
+    %K  = dlqr(A,B,diag(q),R_*eye(size(B,2)));
     %K = get_gain(A,B,E,R_,q,W_,n_C);
     %K = get_gain(A,B,E,R_,q);
-    % if n_C == size(A,1)
-    %     %K = get_gain(A,B,E,R_,q);
-    %     K  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
-    % else
-    %     K = get_gain(A,B,E,R_,q,W_,n_C);
-    % end
+    if n_C == size(A,1)
+        %K = get_gain(A,B,E,R_,q);
+        K  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
+    else
+        K = get_gain(A,B,E,R_,q,W_,n_C);
+    end
     if isnan(K)
         toc
         error 'Could not compute Gains'
