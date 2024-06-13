@@ -312,16 +312,16 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             E(tg_size(i):tg_size(i+1)-1,index_ss(neighbours(j,1)):index_ss(neighbours(j,1)+1)-1) = ones(bus_ss(i,3),bus_ss(neighbours(j,1),2));
 
 
-
             Adjacency_matrix(i,neighbours(j,1)) = 1;
-
             L(1+tg_size(i):tg_size(i)+network(i).machines,neighbours(j,1)) = 1;
 
             T_i =  T_i + T_ji;
 
             C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
-        Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
+        if size(Adjacency_matrix,1) ~= 1
+            Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
+        end
         L(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+network(i).machines,i) = 1;
         
         %Default

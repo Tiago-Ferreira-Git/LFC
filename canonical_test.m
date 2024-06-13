@@ -3,8 +3,8 @@ clearvars -except path; close all; clc;
 run('../plot_options');
 addpath('../../pstess/')
 
-[g,bus,line] = get_g('data3');
-[g,bus,line] = get_g('IEEE_bus_118');
+[g,bus,line] = get_g('data2m');
+%[g,bus,line] = get_g('IEEE_bus_118_res');
 %[g,bus,line] = get_g('AutoSynGrid_3000');
 % bus(bus(:,10)==2,11) = 0;
 % bus(bus(:,10)==2,12) = 0;
@@ -25,10 +25,92 @@ flag_plot_metrics = 0;
 
 
 n_areas = 250;
-n_areas = 30;
+n_areas = 1;
 [A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,flag_ren,flag_integrator);
-cond(A)
+
+%% Testing controlability
+
+A(end,1) = 1e3;
+A(1,end) = W(1);
+
+A12 = zeros(size(A));
+
+A12(end,1) = -1e3;
+A21 = A12;
+
+A_ =  [A A12; A21 A];
+B_= [B zeros(size(B));zeros(size(B)) B ];
+C_ = zeros(1,size(A_,1));
+C_(1,1) = 1;
+%C_(2,6) = 1;
+
+s = tf('s');
+
+global_ = C_*inv(s*eye(size(A_)) - A_)*B_;
+
+w_tie = [1 0 0 0 0]*inv(s*eye(size(A)) - A)*B;
+% roots(w_tie.Numerator{1})
+% roots(w_tie.Denominator{1})
+
+
+
+wo_tie = [1 0 0 0] *inv(s*eye(size(A(1:4,1:4))) - A(1:4,1:4))*B(1:4);
+roots(global_.Numerator{1,1});
+roots(global_.Denominator{1,1});
+
+roots(wo_tie.Numerator{1});
+roots(wo_tie.Denominator{1});
+
+
+P1_tie = -A(end,1)/(s*(s*network(1).inertia + network(1).damping));
+P2_tie = P1_tie;
+
+P1 = wo_tie;
+P2 = P1;
+
+%G1 = wo_tie*(s-P2_tie)/(s-P1_tie-P2_tie)
+%G1 = wo_tie*(s)/(s-P1_tie)
+
+G1 = -(P1*(1-P2_tie))/(1-P1_tie-P2_tie);
+
+disp('Poles Calulated by Matlab of G1(s)')
+roots(G1.Denominator{1})
+
+disp('Poles Calulated by Matlab of P1(s)')
+roots(P1.Denominator{1})
+disp('Supposedly added Poles from tie-lines Calulated by Matlab')
+roots([network(1).inertia network(1).damping 2e3])
+
+
+disp('Poles Calulated by Matlab from state-space')
+roots(global_.Denominator{1,1})
+
+disp('Poles of ss (should be equal to G1(s))')
+roots(global_.Denominator{1})
+
+
+G2 = -(P1_tie*(P2))/(1-P1_tie-P2_tie);
+roots(G2.Denominator{1})
+roots(global_.Denominator{1,2})
+
+
+
+-A(end,1)*A(1,end)
 A_c = A;
+%% Test
+
+A_mech = A(2:4,2:4);
+B_mech = B(2:4);
+C_mech = [1 network(1).tg_con(1,8)*network(1).tg_con(1,9) 0];
+
+Gmech = C_mech*inv(s*eye(size(A_mech)) - A_mech)*B_mech;
+eig(A_mech)
+eig(A(1:4,1:4))
+
+Gteste = Gmech/(s*network(1).inertia+network(1).damping);
+roots(Gteste.Denominator{1})
+ 
+
 
 %%
 h = 2.5;
@@ -97,9 +179,7 @@ for control_type = 1:1
         decentralized = false;
     end
     if ~decentralized  E = ones(size(E)) ; end
-    %K  = dlqr(A,B,diag(q),R_*eye(size(B,2)));
-    %K = get_gain(A,B,E,R_,q,W_,n_C);
-    %K = get_gain(A,B,E,R_,q);
+
     if n_C == size(A,1)
         %K = get_gain(A,B,E,R_,q);
         K  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
@@ -110,11 +190,11 @@ for control_type = 1:1
         toc
         error 'Could not compute Gains'
     end
-    
+
     hour = 1;
     day = 0;
     flag = 1;
-    % t_settling = 0;
+    t_settling = 0;
     bus = bus_initial;
     k_ = 1:3600/h:length(t);
     x = zeros(size(A,1),size(t,2));
@@ -135,11 +215,7 @@ for control_type = 1:1
                  %K = get_gain(A,B,E,R_,q);
            end
            
-           %[A_global,bus,k_tie] = update_dynamics(areas,bus,bus_initial,line,n_areas,A_global,bus_ss,g,network,hour-day*24+1);
-           %[A,B,~,W,~,~] = discrete_dynamics(A_global,B_global,C_global,D_global,W_global,E_global,bus_ss,h,n_areas,L);
-            
-
-           
+            %[~,bus,k_tie] = update_dynamics(areas,bus,bus_initial,line,n_areas,A,bus_ss,g,network,hour-day*24+1);
             %to_plot(hour,:) = k_tie;
         end
 
@@ -162,14 +238,14 @@ for control_type = 1:1
                 t_settling = ((k-k_(hour))*h );
                 time_settling(1,hour) =  t_settling;
                 flag = 0;
-    
+
             end
         else
             if all(abs(y(1:3:end-n_areas,k+1)) < 1e-9) && flag
                 t_settling = ((k-k_(hour))*h );
                 time_settling(1,hour) =  t_settling;
                 flag = 0;
-    
+
             end
         end
 
@@ -194,6 +270,23 @@ for control_type = 1:1
 
    
 end
+
+
+title = sprintf('./fig/K_tie_%d_%d.eps',i,simulation_hours);
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:simulation_hours-5,to_plot(2:end-4,i),'LineWidth',1.5);
+ylabel('$T_{{tie}_{i}}$ ','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+hold off
+savefig('./fig/filename.fig');
+set(gcf,'renderer','Painters');
+saveas(gca,title,'epsc');
+
+
 
 
 if flag_plot_metrics

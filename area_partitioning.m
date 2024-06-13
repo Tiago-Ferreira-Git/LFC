@@ -30,7 +30,7 @@ function areas = area_partitioning(lines,k,machine_buses)
     %V = V(:,mask);
     %3
     %[areas,~] = kmeans(V(:,2:k-2),k,'Distance','cosine');
-    i = 0;
+    j = 0;
     flag = false;
     while ~flag
         [areas,C] = kmeans(V(:,1:k),k,'Distance','cosine');
@@ -48,9 +48,9 @@ function areas = area_partitioning(lines,k,machine_buses)
             break
         end
         flag = false;
-        i = i +1;
-        if i == 1000
-            
+        j = j +1;
+        if j == 3000
+            disp('A 1000 iterations')
         end
     end
 

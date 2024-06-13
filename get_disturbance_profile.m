@@ -39,7 +39,7 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
 
     k_ = 1:3600/h:size(w,2);
     for hour=1:simulation_hours
-        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1 )*100;
+        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
         w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
     end
     
@@ -49,10 +49,8 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
     
     
     for i = 1:size(w,1)
-        %w(i,:) = lowpass(w(i,:),1e-5,1/h);
-        %windowSize = 3600/h*2; 
-        %b = (1/windowSize)*ones(1,windowSize);
-        freq_pole = 0.003;
+
+        freq_pole = 0.0003;
         a = [1 -exp(-h*freq_pole)];
         b = 1-exp(-h*freq_pole);
         w(i,:) = filter(b,a,w(i,:));
@@ -81,7 +79,7 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
         hold on
         grid on
         box on;
-        stairs(t,w(2:2:end,:)','LineWidth',1.5);
+        stairs(t,w(ren_mask,:)','LineWidth',1.5);
         legend('$\Delta P_{{ren}_1}$','$\Delta P_{{ren}_2}$','$\Delta P_{{ren}_3}$','Interpreter','latex')
         ylabel('$\Delta P_{ren}$ (pu)','interpreter','latex');
         xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
