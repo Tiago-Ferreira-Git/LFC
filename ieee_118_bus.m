@@ -33,7 +33,7 @@ A_c = A;
 %%
 h = 2.5;
 
-[A,B,W] = discrete_dynamics(A,B,W,h);
+[A,B,W] = discrete_dynamics(A,B,h,W);
 
 rank(ctrb(A,B))
 

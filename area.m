@@ -12,6 +12,7 @@ classdef area
         mac_base
         bus
         to_bus
+        mac_bus;
         lmod
     end
 
@@ -33,7 +34,10 @@ classdef area
 
             obj.to_bus = [];
 
+            obj.mac_bus = [];
+
             obj.bus = bus;
+            
         end
     end
 end

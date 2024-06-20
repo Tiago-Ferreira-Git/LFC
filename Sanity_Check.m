@@ -31,16 +31,17 @@ P2_tie = P1_tie;
 
 G1 = -(P1*(1-P2_tie))/(1-P1_tie-P2_tie);
 
-disp('Poles Calulated by Matlab of G1(s)')
+disp('G1(s) Poles Calulated by Matlab')
 roots(G1.Denominator{1})
 
-disp('Poles Calulated by Matlab of P1(s)')
+disp('P1(s) Poles Calulated by Matlab ')
 roots(P1.Denominator{1})
+
 disp('Supposedly added Poles from tie-lines Calulated by Matlab')
-roots([network(1).inertia network(1).damping 2e3])
+roots([network(1).inertia network(1).damping A(end,1)*2])
 
 
-disp('Poles Calulated by Matlab from state-space')
+disp('State-Space Poles Calulated by Matlab')
 roots(global_.Denominator{1,1})
 
 disp('Poles of ss (should be equal to G1(s))')

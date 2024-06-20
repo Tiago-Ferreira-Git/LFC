@@ -23,11 +23,11 @@ function [bus,area_gain_tie_lines,angles,q_gen,p_gen,q_load,p_load] = update_dyn
     % bus(:,5) = bus(:,5)./2;
 
     %increase loads
-    nominal_load_p_increase_profile = (gaussmf(x,[4*3600 12*3600])*0.4+0.1);
-    nominal_load_q_increase_profile = (gaussmf(x,[4*3600 12*3600])*0.6+0.1);
+    %nominal_load_p_increase_profile = (gaussmf(x,[4*3600 12*3600])*0.4+0.1);
+    %nominal_load_q_increase_profile = (gaussmf(x,[4*3600 12*3600])*0.6+0.1);
 
-    bus(buses_to_increase_con,6) = nominal_load_p_increase_profile(hour);
-    bus(buses_to_increase_con,7) = nominal_load_q_increase_profile(hour);
+    %bus(buses_to_increase_con,6) = nominal_load_p_increase_profile(hour);
+    %bus(buses_to_increase_con,7) = nominal_load_q_increase_profile(hour);
     
     %set gen
     bus(end-n_ren+1:end,4) = ren_data.data(hour,2:end)';

@@ -50,7 +50,7 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
     
     for i = 1:size(w,1)
 
-        freq_pole = 0.0003;
+        freq_pole = 0.005;
         a = [1 -exp(-h*freq_pole)];
         b = 1-exp(-h*freq_pole);
         w(i,:) = filter(b,a,w(i,:));
@@ -67,6 +67,8 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
     legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
     ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
     xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+    xticks(0:3600:simulation_hours*3600)
+    xticklabels(sprintfc('%d', 0:simulation_hours))
     hold off
     set(gcf,'renderer','Painters');
     title='./fig/delta_p_load.png';
@@ -83,6 +85,8 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
         legend('$\Delta P_{{ren}_1}$','$\Delta P_{{ren}_2}$','$\Delta P_{{ren}_3}$','Interpreter','latex')
         ylabel('$\Delta P_{ren}$ (pu)','interpreter','latex');
         xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+        xticks(0:3600:simulation_hours*3600)
+        xticklabels(sprintfc('%d', 0:simulation_hours))
         hold off
         set(gcf,'renderer','Painters');
         title='./fig/p_ren.png';
