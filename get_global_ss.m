@@ -1,42 +1,42 @@
-function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,flag_ren,flag_integrator,network)
+function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren,network)
     
     base_mva = 100;
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
-    if(nargin <= 5)
+    if(nargin <= 3)
         
-        areas = area_partitioning(g.line,n_areas,g.mac.mac_con(:,2));
+        areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
         
         network = [];
         for i = 1:n_areas
             area_bus = find(areas==i);
             network = [network area(area_bus)];
             %Remove lines inside areas
-            mask = bitand(ismember(g.line(:,1),area_bus),ismember(g.line(:,2),area_bus));
-            g.line(mask,:) = [];
+            mask = bitand(ismember(mpc.branch(:,1),area_bus),ismember(mpc.branch(:,2),area_bus));
+            mpc.branch(mask,:) = [];
             
         end
         
         
-        g.mac.mac_con(:,16) = g.mac.mac_con(:,16).*g.mac.mac_con(:,3)/base_mva;
-        g.mac.mac_con(:,17) = g.mac.mac_con(:,17).*g.mac.mac_con(:,3)/base_mva;
+        mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
+        mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
     
     
         %% obtaining area inertia and damping
-        for i=1:size(g.bus.bus_int,1)
+        for i=1:size(mpc.bus(:,1),1)
             
-            mask = g.mac.mac_con(:,2) == i;
+            mask = mpc.mac_con(:,2) == i;
             if any(mask)
                 for j=1:n_areas
                     if ismember(i, network(j).bus)
-                        network(j).inertia = network(j).inertia + g.mac.mac_con(mask,16);
-                        network(j).damping = network(j).damping + g.mac.mac_con(mask,17);
+                        network(j).inertia = network(j).inertia + mpc.mac_con(mask,16);
+                        network(j).damping = network(j).damping + mpc.mac_con(mask,17);
                         network(j).machines = network(j).machines + 1;
-                        network(j).tg_con = [network(j).tg_con ; g.tg.tg_con(g.mac.mac_con(mask,1),:)];
+                        network(j).tg_con = [network(j).tg_con ; mpc.tg_con(mpc.mac_con(mask,1),:)];
     
-                        network(j).mac_base = [network(j).mac_base g.mac.mac_con(mask,3)];
+                        network(j).mac_base = [network(j).mac_base mpc.mac_con(mask,3)];
 
-                        network(j).mac_bus = [network(j).mac_bus g.bus.bus_int(i)];
+                        network(j).mac_bus = [network(j).mac_bus mpc.bus(i,1)];
                         break
                     end
                 end
@@ -50,12 +50,12 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
             % network(j).inertia  = network(j).inertia * ( 0.7 + rand*(1.5-0.7));
     
             % Retrieving lmod index
-            [~,~,index_lmod] = intersect(network(j).bus,g.lmod.lmod_con(:,2),'stable');
-            network(j).lmod = index_lmod;
+            % [~,~,index_lmod] = intersect(network(j).bus,g.lmod.lmod_con(:,2),'stable');
+            % network(j).lmod = index_lmod;
         end
         %% Getting lines that connect to other areas
     
-        lines = g.line;
+        lines = mpc.branch;
         
        
     
@@ -182,7 +182,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         %Add error integrator 
         A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
         A(end,1) = -1;
-        B = [B; zeros(1,size(B_area,2))];
+        B = [B; zeros(1,size(B,2))];
 
         
         W = zeros(size(B,1),n_ren+1);
@@ -220,8 +220,8 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
     
     %%
 
-    bus_sol = bus;
-    bus_sol(:,3) = deg2rad(bus(:,3));
+    bus_sol = mpc.bus(:,9);
+    bus_sol = deg2rad(bus_sol);
 
 
     %Add tie-lines
@@ -243,7 +243,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
         for j = 1:size(neighbours,1)
-            T_ji = 377*cos(bus_sol(g.bus.bus_int(neighbours(j,3)),3) - bus_sol(g.bus.bus_int(neighbours(j,2)),3))/(neighbours(j,5));
+            T_ji = 377*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
 
             % T_ji =  T_ji/10000;
 

@@ -1,32 +1,26 @@
 
 clearvars -except path; close all; clc;
 run('../plot_options');
-addpath('../../pstess/')
-
-%[g,bus,line] = get_g('data3');
-[g,bus,line] = get_g('IEEE_bus_118_res');
-
-% g.line(1,:) = [];
-tol = 1e-8;                      % tolerance for convergence
-itermax = 50;                    % maximum number of iterations
-acc = 1.0;                       % acceleration factor
+run("D:\OneDrive - Universidade de Lisboa\Aulas\Tese\Simulations\Power System Toolbox\matpower7.1\startup.m")
+opt = mpoption('verbose',0,'out.all',0);
 
 
-
-
-[bus,line,line_flw] = loadflow(bus,line,tol,itermax,acc,'n',2);
-
-bus_initial = bus;
-clearvars -except g bus t line bus_initial
-
-flag_integrator = 1;
 flag_ren = 1;
-flag_plot_metrics = 1;
+flag_plot_metrics = 0;
 
 
+[mpc,n_res,idx] = get_g('case118',flag_ren);
+
+mpc = runopf(mpc,opt);
+clearvars -except mpc flag_plot_metrics flag_ren n_res idx
+
+mpc_initial = mpc;
+
+mac_remove =  [12 40];
+n_gen = size(mpc.gen,1);
 n_areas = 250;
 n_areas = 30;
-[A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,flag_ren);
+[A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren);
 
 
 
@@ -34,7 +28,7 @@ n_areas = 30;
 h = 2.5;
 
 [A,B,W] = discrete_dynamics(A,B,W,h);
-
+save('data/ss.mat',"A","B","C","D","W")
 bus_remove = [];
 for i = 1:4:size(network,2)
     if(size(network(i).to_bus,1) > 2)
@@ -87,13 +81,20 @@ disp_cost_area = zeros(2,n_areas);
 time_settling_cost = zeros(2,simulation_hours);
 to_plot = zeros(simulation_hours,n_areas);
 
+%Active generation before/after fault
+P_gen = zeros(2,size(mpc.gen,1));
+Q_gen = zeros(2,size(mpc.gen,1));
+
+P_gen(1,:) = mpc.gen(:,2);
+Q_gen(1,:) = mpc.gen(:,3);
+
 %Frequency output limit according to [1] 
 freq_limit = 0.05/50;
 
 
 
 for control_type = 1:2
-    load('ss')
+    load('data/ss')
     % Controller gain synthesis 
     if(control_type==2)
         E = ones(size(E));
@@ -114,9 +115,10 @@ for control_type = 1:2
     day = 0;
     flag = 1;
     t_settling = 0;
-    bus = bus_initial;
+    mpc = mpc_initial;
     k_ = 1:3600/h:length(t);
     x = zeros(size(A,1),size(t,2));
+    delta_u = zeros(size(B,2),size(t,2));
     u = zeros(size(B,2),size(t,2));
     u_area = zeros(n_areas,size(t,2));
     y = zeros(size(C,1),size(t,2));
@@ -125,13 +127,14 @@ for control_type = 1:2
     for k = 1:length(t)-1
         
         if(k == k_(hour+1) )
+           %[mpc,A,B,C,D,W,~] = update_dynamics(mpc,network,flag_ren,hour,mpc_initial,idx,h);
            hour = hour + 1;
            flag = 1;
         end
 
-        u(:,k) = -K*x(:,k);
-        u(:,k) = min(max(u(:,k),-0.1),0.1);
-        x(:,k+1) = A*x(:,k) + B*u(:,k) + W*w(:,k);
+        delta_u(:,k) = -K*x(:,k);
+        delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
+        x(:,k+1) = A*x(:,k) + B*delta_u(:,k) + W*w(:,k);
 
         y(:,k+1) = C*x(:,k+1);
 
@@ -153,10 +156,20 @@ for control_type = 1:2
         end
 
         if(k == t_fault)
-            [A,B,C,W,E,~,~,~] = fault(g,bus,network,flag_ren,[],bus_remove,h);
+            bus_remove = [];
+            
+            mask = false(1,size(mpc.gen,1));
+            mask(mac_remove) = 1;
+            [A,B,C,W,E,~,mpc,~] = fault(mpc,network,flag_ren,mac_remove,bus_remove,h);
             %K  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
+            P_gen(2,~mask) = mpc.gen(:,2);
+            Q_gen(2,~mask) = mpc.gen(:,3);
+
+            P_gen(2,mask) = 0;
+            Q_gen(2,mask) = 0;
         end
         
+        u(:,k) = delta_u(:,k)*100+mpc.gen(1:n_gen-n_res,2);
         k;
 
     end
@@ -207,10 +220,59 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
+plot(1:n_gen-n_res,P_gen(:,1:n_gen-n_res),'LineWidth',1.5);
+legend('$P_{pre-fault}$','$P_{fault}$','Interpreter','latex')
+ylabel('$P$ (MW)','interpreter','latex');
+xlabel('$Machines$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title='./fig/P_fault.png';
+saveas(gca,title,'png');
+
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+plot(1:n_gen-n_res,Q_gen(:,1:n_gen-n_res),'LineWidth',1.5);
+legend('$Q_{pre-fault}$','$Q_{fault}$','Interpreter','latex')
+ylabel('$Q$ (MVar)','interpreter','latex');
+xlabel('$Machines$','Interpreter','latex');
+hold off
+set(gcf,'renderer','Painters');
+title='./fig/Q_fault.png';
+saveas(gca,title,'png');
+
+
+
+%%
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+stairs(t,delta_u','LineWidth',1.5);
+xline(t_fault*h,'LineWidth',0.5,'LineStyle','--','Color','black')
+legend('$\Delta u_1$','$\Delta u_2$','$\Delta u_3$','Interpreter','latex')
+ylabel('$\Delta u$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+xticks(0:3600:simulation_hours*3600)
+xticklabels(sprintfc('%d', 0:simulation_hours))
+hold off
+set(gcf,'renderer','Painters');
+title='./fig/u.png';
+saveas(gca,title,'png');
+
+
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
 stairs(t,u','LineWidth',1.5);
 xline(t_fault*h,'LineWidth',0.5,'LineStyle','--','Color','black')
 legend('$u_1$','$u_2$','$u_3$','Interpreter','latex')
-ylabel('$u$ (pu)','interpreter','latex');
+ylabel('$u$ (MW)','interpreter','latex');
 xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
 xticks(0:3600:simulation_hours*3600)
 xticklabels(sprintfc('%d', 0:simulation_hours))

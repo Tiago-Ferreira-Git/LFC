@@ -1,116 +1,58 @@
-function [bus,area_gain_tie_lines,angles,q_gen,p_gen,q_load,p_load] = update_dynamics(areas,bus,line,n_areas,A_global,bus_ss,g,network,hour,bus_initial)
+function [mpc,A,B,C,D,W,ktie] = update_dynamics(mpc,network,flag_ren,hour,mpc_initial,idx,h)
 
-    ren_data = load('data\solar.mat');
-    ren_data = ren_data.data;
-    n_ren = size(ren_data.bus,1);
+    data = load('data\solar.mat');
+    data = data.data;
 
-    %bus = bus_initial;
-    %select the first bus for each area
 
-    buses_to_increase_con = [];
-    %zeros(n_areas,1);
-    for i = 1:n_areas
-        mask = find(areas == i);
-        buses_to_increase_con = [buses_to_increase_con  ; mask(1:min(2,size(mask,1)))];
+    bus_index = 1:2:118;
 
-    end
-    bus_prev = bus;
+
+    x = 0:24;
+
+    nominal_load_p_increase_profile = (gaussmf(x,[4 12])*1);
+    nominal_load_q_increase_profile = (gaussmf(x,[4 12])*1);
+
+    %Active power
+    mpc.gen(idx,2) = data.data(hour,2:end)';
+    mpc.gen(idx,2) = mpc.gen(idx,2)*mpc_initial.baseMVA;
+
+    %Active power limits
+    mpc.gen(idx,9) = mpc.gen(idx,2) + 0.000001 ;
+    mpc.gen(idx,10) = mpc.gen(idx,2) - 0.000001;
+
+
+    %Reactive Power Limitis
+    mpc.gen(idx,4) = min(1,data.data(hour,2:end)'./10)+0.001;
+    mpc.gen(idx,4) = mpc.gen(idx,4)*mpc_initial.baseMVA;
+
+    mpc.gen(idx,5) = 0;
+    mpc.gen(idx,5) = mpc.gen(idx,5)*mpc_initial.baseMVA;
+
+
+    % new_mpc.bus(bus_index, 3) * (1 + nominal_load_p_increase_profile(hour))
+    mpc.bus(bus_index, 3) = mpc_initial.bus(bus_index, 3) *(1 + nominal_load_p_increase_profile(mod(hour,24)+1));
+    mpc.bus(bus_index, 4) = mpc_initial.bus(bus_index, 4) *(1 + nominal_load_q_increase_profile(mod(hour,24)+1));
     
 
-    x = 0:3600:3600*24;
-
-    % bus(:,4) = bus(:,4)./2;
-    % bus(:,5) = bus(:,5)./2;
-
-    %increase loads
-    %nominal_load_p_increase_profile = (gaussmf(x,[4*3600 12*3600])*0.4+0.1);
-    %nominal_load_q_increase_profile = (gaussmf(x,[4*3600 12*3600])*0.6+0.1);
-
-    %bus(buses_to_increase_con,6) = nominal_load_p_increase_profile(hour);
-    %bus(buses_to_increase_con,7) = nominal_load_q_increase_profile(hour);
-    
-    %set gen
-    bus(end-n_ren+1:end,4) = ren_data.data(hour,2:end)';
-    bus(119:end,10) = 2;
-
-
-
-
-    buses_with_generation = bitor(bus_initial(:,10)==2 , bus_initial(:,10)==1 );
-    bus(buses_with_generation,11) = 3;
-    bus(buses_with_generation,12) = -3;
-
-    bus(119:end,11) = min(1,ren_data.data(hour,2:end)'./10)+0.001;
-    bus(119:end,12) = -min(1,ren_data.data(hour,2:end)'./10)-0.001;
-
-
-    %ren_data.data(hour,2:end)'
-    
-    tol = 1e-8;                       % tolerance for convergence
-    itermax = 100;                    % maximum number of iterations
-    acc = 1.0;                        % acceleration factor
-    [bus,~,~] = loadflow(bus,line,tol,itermax,acc,'n',2);
-    teste = bus(:,3) - bus_prev(:,3);
-        
-    bus(:,3) = deg2rad(bus(:,3));
-    
-    
-    %Add tie-lines
-    %A_global(6:6:end,:) = 0; 
-    for i=1:n_areas
-        A_global(sum(bus_ss(1:i,2)),:) = 0;
+    [mpc,flag] = runopf(mpc,mpoption('verbose',0,'out.all',0));
+    if ~flag
+        error 'Power Flow did not converge. Try running again or changing faults'
     end
 
-
+    n_areas = size(network,2);
+    [A,B,C,D,W,~,~,~,~,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,network);
     
-    bus_sol = bus;
-    bus_sol(:,3) = deg2rad(bus(:,3));
 
+    [A,B,W] = discrete_dynamics(A,B,W,h);
 
-    %Add tie-lines
-
-    index_ss = cumsum(bus_ss(:,2))+1;
-    index_ss = [1 ; index_ss];
-
-    area_gain_tie_lines = zeros(1,n_areas);
-
+    %[bus,k_tie,angles,q_gen,p_gen,q_load,p_load] = update_dynamics(areas,bus,line,n_areas,A,bus_ss,g,network,hour,bus_initial);
+    %ktie with C
+    ktie = zeros(1,size(network,2));
+    rows = 3:4:size(C,1);
+    cols = cumsum(bus_ss(:,2));
     for i = 1:size(network,2)
-
-
-        neighbours = network(i).to_bus;
-        T_i = 0;
-        for j = 1:size(neighbours,1)
-            T_ji = 377*cos(bus_sol(g.bus.bus_int(neighbours(j,3)),3) - bus_sol(g.bus.bus_int(neighbours(j,2)),3))/(neighbours(j,5));
-
-            
-            %Changin ptie for error integral
-            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji*bus_ss(i,5);
-            
-
-            T_i =  T_i + T_ji;
-        end
-        area_gain_tie_lines(i) = T_i;
-        
-        A_global(index_ss(i), index_ss(i+1)-1) = T_i*bus_ss(i,5);
-
+        ktie(i) = C(rows(i),cols(i));
     end
-
-
-    
-
-    bus(119:end,10) = 2;
-    bus(:,3) = rad2deg(bus(:,3));
-    bus = bus(:,1:13);
-    angles = bus(:,3);
-    p_gen = bus(buses_with_generation,4);
-    q_gen = bus(buses_with_generation,5);
-
-    p_load = bus(:,6);
-    q_load = bus(:,7);
-    
-    size(bus(buses_to_increase_con,1),1)
-
-
 end
 
 

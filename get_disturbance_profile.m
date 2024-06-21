@@ -39,7 +39,7 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
 
     k_ = 1:3600/h:size(w,2);
     for hour=1:simulation_hours
-        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
+        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*1000;
         w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
     end
     

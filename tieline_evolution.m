@@ -1,55 +1,34 @@
 
+
 clearvars -except path; close all; clc;
-%run('../plot_options');
-addpath('../../pstess/')
-
-[g,bus,line] = get_g('IEEE_bus_118_res');
-tol = 1e-8;                      % tolerance for convergence
-itermax = 50;                    % maximum number of iterations
-acc = 1.0;                       % acceleration factor
+run('../plot_options');
+run("D:\OneDrive - Universidade de Lisboa\Aulas\Tese\Simulations\Power System Toolbox\matpower7.1\startup.m")
+opt = mpoption('verbose',0,'out.all',0);
 
 
-bus(119:end,10) = 2;
-
-buses_with_generation = bitor(bus(:,10)==2 , bus(:,10)==1 );
-bus(buses_with_generation,11) = 9999;
-bus(buses_with_generation,12) = -9999;
-bus(119:end,11) = 0.001;
-bus(119:end,12) = -0.001;
-
-
-[bus,line,line_flw] = loadflow(bus,line,tol,itermax,acc,'n',2);
-bus(119:end,10) = 2;
-
-
-angles = bus(:,3);
-p_gen = bus(buses_with_generation,4);
-q_gen = bus(buses_with_generation,5);
-
-p_load = bus(:,6);
-q_load = bus(:,7);
-
-
-
-
-
-
-bus_initial = bus;
-
-flag_integrator = 1;
 flag_ren = 1;
 flag_plot_metrics = 0;
 
 
+[mpc,n_res,idx] = get_g('case118',flag_ren);
+
+mpc = runopf(mpc,opt);
+clearvars -except mpc flag_plot_metrics flag_ren n_res idx
+
+mpc_initial = mpc;
+
+
+n_gen = size(mpc.gen,1);
 n_areas = 250;
 n_areas = 30;
-[A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(g,bus,n_areas,flag_ren,flag_integrator);
-A_c = A;
+[A,B,C,D,W,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren);
+
+
 
 %%
 h = 2.5;
 
-[A,B,W] = discrete_dynamics(A,B,h,W);
+[A,B,W] = discrete_dynamics(A,B,W,h);
 
 
 
@@ -69,7 +48,6 @@ t = 0:h:3600*simulation_hours;
 hour = 1;
 day = 0;
 flag = 1;
-bus = bus_initial;
 k_ = 1:3600/h:length(t);
 
 
@@ -77,19 +55,19 @@ k_ = 1:3600/h:length(t);
 
 
 to_plot = zeros(simulation_hours,n_areas);
-plot_angles = zeros(simulation_hours,size(bus,1));
-plot_q_gen = zeros(simulation_hours,sum(buses_with_generation));
-plot_p_gen = zeros(simulation_hours,sum(buses_with_generation));
-plot_q_load = zeros(simulation_hours,size(bus,1));
-plot_p_load = zeros(simulation_hours,size(bus,1));
+plot_angles = zeros(simulation_hours,size(mpc.bus,1));
+plot_q_gen = zeros(simulation_hours,size(mpc.gen,1));
+plot_p_gen = zeros(simulation_hours,size(mpc.gen,1));
+plot_q_load = zeros(simulation_hours,size(mpc.bus,1));
+plot_p_load = zeros(simulation_hours,size(mpc.bus,1));
 
 
 
-plot_angles(1,:) = angles;
-plot_q_gen(1,:) = q_gen;
-plot_p_gen(1,:) = p_gen;
-plot_q_load(1,:) = q_load;
-plot_p_load(1,:) = p_load;
+plot_angles(1,:) = mpc.bus(:,9);
+plot_q_gen(1,:) = mpc.gen(:,3);
+plot_p_gen(1,:) = mpc.gen(:,2);
+plot_q_load(1,:) = mpc.bus(:,4);
+plot_p_load(1,:) = mpc.bus(:,3);
 
 for k = 1:length(t)-1
     
@@ -103,18 +81,14 @@ for k = 1:length(t)-1
              %K = get_gain(A,B,E,R_,q);
        end
        
-        [bus,k_tie,angles,q_gen,p_gen,q_load,p_load] = update_dynamics(areas,bus,line,n_areas,A,bus_ss,g,network,hour,bus_initial);
+        [mpc,~,~,~,~,W,k_tie] = update_dynamics(mpc,network,flag_ren,hour,mpc_initial,idx,h);
         
         to_plot(hour,:) = k_tie;
-        
-        plot_angles(hour,:) = angles;
-        plot_q_gen(hour,:) = q_gen;
-        plot_p_gen(hour,:) = p_gen;
-        plot_q_load(hour,:) = q_load;
-        plot_p_load(hour,:) = p_load;
-
-
-        to_plot(hour,:) = k_tie;
+        plot_angles(hour,:) = mpc.bus(:,9);
+        plot_q_gen(hour,:) = mpc.gen(:,3);
+        plot_p_gen(hour,:) = mpc.gen(:,2);
+        plot_q_load(hour,:) = mpc.bus(:,4);
+        plot_p_load(hour,:) = mpc.bus(:,3);
     end
 
 
