@@ -1,4 +1,4 @@
-function [A,B,C,W,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_fault,tie_fault,h)
+function [A,B,C,W,W_mech,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_fault,tie_fault,h)
 
 
     
@@ -13,7 +13,7 @@ function [A,B,C,W,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_fault,t
         for i = 1:size(mac_fault,2)
             %clear variables in the network structure
             for j = 1:size(network,2)
-                mask = network(j).mac_bus == mac_fault(i);
+                mask = network(j).mac_nr == mac_fault(i);
                 if(any(mask))
                     network(j).tg_con(mask,:) = zeros(size(network(j).tg_con(1,:)));
                 end
@@ -22,9 +22,10 @@ function [A,B,C,W,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_fault,t
         end
         
         %clear active and reactive power in the bus array
+        mpc.bus(mpc.gen(mac_fault,1),10) = 1;
         mpc.gen(mac_fault,:) = [];
         mpc.gencost(mac_fault,:) = [];
-        mpc.bus(mpc.gen(mac_fault,1),10) = 1;
+        
 
     end
 
@@ -53,16 +54,16 @@ function [A,B,C,W,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_fault,t
 
 
     
-    [mpc,flag] = runopf(mpc);
+    [mpc,flag] = runopf(mpc,mpoption('verbose',0,'out.all',0));
     %,mpoption('verbose',0,'out.all',0)
     if ~flag
         error 'Power Flow did not converge. Try running again or changing faults'
     end
 
     n_areas = size(network,2);
-    [A,B,C,D,W,~,E,~,network,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,network);
+    [A,B,C,D,W,W_mech,~,~,E,~,network,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,network);
     
-
+    %[~,~,W_mech] = discrete_dynamics(A,B,W_mech,h);
     [A,B,W] = discrete_dynamics(A,B,W,h);
 
 

@@ -1,5 +1,5 @@
 function [mpc,n_ren,idx] = get_g(data_file,flag_ren)
- 
+    n_ren = 0;
     if flag_ren
         data = load('data\solar.mat');
         data = data.data;

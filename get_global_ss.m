@@ -1,12 +1,14 @@
-function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren,network)
+function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren,network)
     
     base_mva = 100;
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
     if(nargin <= 3)
-        
-        areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
-        
+        if flag_ren
+            areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:end-length(ren_data.bus),1));
+        else
+            areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
+        end
         network = [];
         for i = 1:n_areas
             area_bus = find(areas==i);
@@ -21,11 +23,15 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
         mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
     
+
+
+
     
         %% obtaining area inertia and damping
         for i=1:size(mpc.bus(:,1),1)
             
             mask = mpc.mac_con(:,2) == i;
+            
             if any(mask)
                 for j=1:n_areas
                     if ismember(i, network(j).bus)
@@ -37,22 +43,21 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
                         network(j).mac_base = [network(j).mac_base mpc.mac_con(mask,3)];
 
                         network(j).mac_bus = [network(j).mac_bus mpc.bus(i,1)];
+                        network(j).mac_nr = [network(j).mac_nr ; find(mpc.mac_con(:,2) == i)];
+
+
                         break
                     end
                 end
             end
 
         end
+        
         for j=1:n_areas
             network(j).damping = network(j).damping/network(j).machines;
-            %network(j).tg_con = sum(network(j).tg_con,1)./network(j).machines;
             network(j).inertia = network(j).inertia/network(j).machines;
-            % network(j).inertia  = network(j).inertia * ( 0.7 + rand*(1.5-0.7));
-    
-            % Retrieving lmod index
-            % [~,~,index_lmod] = intersect(network(j).bus,g.lmod.lmod_con(:,2),'stable');
-            % network(j).lmod = index_lmod;
         end
+
         %% Getting lines that connect to other areas
     
         lines = mpc.branch;
@@ -80,7 +85,7 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         areas = [];
     end  
 
-    
+
 
     
     
@@ -90,7 +95,19 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
     B_global = [];
     C_global = [];
     W_global = [];
+    %W_global_mech = [];
+
+    machine_ss = [];
+
+    C_mac = [];
     
+    if flag_ren 
+        n_res = size(ren_data.bus,1);
+    else
+        n_res = 0;
+    end
+
+   
 
     u = [];
     s = tf('s');
@@ -100,6 +117,9 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
     else
         ren_ss = [];
     end
+
+
+    n_machines = 0;
     for i=1:length(network)
         u_area = [];
 
@@ -107,9 +127,12 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         A_area = [];
         B_area = [];
         C_area = [];
+        C_mac_area = [];
+        
+
         n_ren = 0;
         for j = 1:size(network(i).tg_con,1)
-    
+            n_machines = n_machines + 1;
             %p_mech ss
             
             Ts = network(i).tg_con(j,6); Tc = network(i).tg_con(j,7); T3 = network(i).tg_con(j,8); T4 = network(i).tg_con(j,9); T5 = network(i).tg_con(j,10);
@@ -135,16 +158,19 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
                 B_mech = [0 0 0 ]';
     
                 C_mech = [0 0 0];
+                n = size(A_global,1)+1+(j-1)*3;
+                machine_ss = [machine_ss ; (n:n+3-1)' ones(3,1).*n_machines];
             end
             
            
             A_area = [A_area zeros(size(A_area,1),size(A_mech,2)) ; zeros(size(A_mech,1),size(A_area,2)) A_mech];
             B_area = [B_area zeros(size(B_area,1),size(B_mech,2)) ; zeros(size(B_mech,1),size(B_area,2)) B_mech];
             C_area = [C_area C_mech];
+            C_mac_area = [C_mac_area zeros(size(C_mac_area,1),size(C_mech,2)) ; zeros(size(C_mech,1),size(C_mac_area,2)) C_mech];
     
         end
     
-
+        
         
     
         A_freq = -network(i).damping/network(i).inertia;
@@ -187,6 +213,11 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         
         W = zeros(size(B,1),n_ren+1);
 
+        % Machine
+        %W_mech = zeros(size(B,1),size(B_area,2));
+        %W_mech(1,:) = B_freq;
+
+
         %Load disturbance
         W(1,1) = -B_freq;
 
@@ -215,7 +246,14 @@ function [A_global,B_global,C_global,D_global,W_global,u,E,areas,network,bus_ss,
         B_global = [B_global zeros(size(B_global,1), size(B,2)); zeros(size(B,1), size(B_global,2)) B];
         C_global = [C_global zeros(size(C_global,1), size(C,2)); zeros(size(C,1), size(C_global,2)) C];
         W_global = [W_global zeros(size(W_global,1), size(W,2)); zeros(size(W,1), size(W_global,2)) W];
+        
+        %W_global_mech = [W_global_mech zeros(size(W_global_mech,1), size(W_mech,2)); zeros(size(W_mech,1), size(W_global_mech,2)) W_mech];
+
+        C_mac = [C_mac zeros(size(C_mac,1), size(C_mac_area,2)+2+n_ren); zeros(size(C_mac_area,1), size(C_mac,2)) zeros(size(C_mac_area,1),1) C_mac_area zeros(size(C_mac_area,1),1+n_ren)];
+        
+        
     end
+    
     
     
     %%
