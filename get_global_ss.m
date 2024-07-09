@@ -3,9 +3,10 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     base_mva = 100;
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
+    n_machine = size(mpc.gen,1)-length(ren_data.bus);
     if(nargin <= 3)
         if flag_ren
-            areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:end-length(ren_data.bus),1));
+            areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:n_machine,1));
         else
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
         end
@@ -90,10 +91,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     
     
     %% Generate the ss for each area
+    
     bus_ss = [];
     A_global = [];
     B_global = [];
     C_global = [];
+    C_ren = [];
     W_global = [];
     %W_global_mech = [];
 
@@ -177,7 +180,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B_freq = 1/network(i).inertia;
         
         freq_feedback = zeros(size(B_area,1),1);
-        freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+        %freq_feedback(3:3:end) = -network(i).tg_con(:,4);
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
 
@@ -186,10 +189,19 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         
         %Add renewables state
-        if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
+        mask = ismember(network(i).bus,ren_data.bus);
+        if any(mask) && flag_ren
             index = size(A_global,1) + size(A,1);
             
-            n_ren = sum(ismember(network(i).bus,ren_data.bus)) ;
+            generator_mask = zeros(size(mpc.gen,1),1);
+            generator_mask(n_machine+1:end) = 1;
+
+            network(i).res_bus = network(i).bus(mask);
+            network(i).res_nr = find(bitand(ismember(mpc.gen(:,1),network(i).bus(mask)),generator_mask) == 1);
+            
+
+            n_ren = sum(mask);
+            network(i).res = n_ren;
             ren_ss(n_areas:n_areas+n_ren-1) = index+1:1:index+n_ren;
             
             for j = 1:n_ren
@@ -213,9 +225,6 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         W = zeros(size(B,1),n_ren+1);
 
-        % Machine
-        %W_mech = zeros(size(B,1),size(B_area,2));
-        %W_mech(1,:) = B_freq;
 
 
         %Load disturbance
@@ -231,13 +240,20 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             n_areas = n_areas + n_ren;
         end
 
+        % Non-linear Simulation
+        network(i).A = A;
+        network(i).B = B;
+        network(i).C = [eye(1,size(A,1)) ; zeros(network(i).machines,1) C_mac_area zeros(network(i).machines,1+n_ren)];
+        network(i).W = W;
+        
+
 
         C = zeros(4,size(A,1));
 
         C(1,1) = 1;
         C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
         %C(3,end) = 1;
-        C(4,end) = -1;
+        C(4,end) = -1*2*pi*60;
 
         
 
@@ -281,7 +297,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
         for j = 1:size(neighbours,1)
-            T_ji = 377*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
+            T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
 
             % T_ji =  T_ji/10000;
 
@@ -300,7 +316,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             T_i =  T_i + T_ji;
 
-            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
+            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
