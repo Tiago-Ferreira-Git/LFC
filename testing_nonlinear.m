@@ -19,7 +19,7 @@ n_gen = size(mpc.gen,1);
 
 n_areas = 3;
 
-[A_c,B_c,C,~,W,~,C_mech,~,E,~,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren);
+[A_c,B_c,C,~,W,~,C_mech,~,E,~,network,bus_ss,ren_ss] = get_global_ss_(mpc,n_areas,flag_ren);
 %%
 network_initial = network;
 h = 2.5;
@@ -107,7 +107,7 @@ K = lqr(A_c,B_c,diag(q),0.1*eye(size(B,2)));
 
 delta_u = 0.001*ones(size(B,2),1);
 
-[t_nL,x_nL] = ode45(@(t,x_nL) nonlinear_model(t,x_nL,K,network,bus_ss,x0,u0,u_index,w,w_index,delta_u), tspan,x0,opts);
+[t_nL,x_nL] = ode45(@(t,x_nL) xdot(t,x_nL,K,network,bus_ss,x0,u0,u_index,w,w_index,delta_u), tspan,x0,opts);
 
 
 y_nL = C*x_nL';
@@ -131,7 +131,7 @@ for k = 1:length(t_L)
     %delta_u = min(max(delta_u,-0.1),0.1);
 
     
-    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,u_index,w,w_index,delta_u(:,k)),[0 h],x_nL_d(:,k));
+    [~,x] = ode45(@(t,x) xdot(t,x,K,network,bus_ss,x0,u0,u_index,w,w_index,delta_u(:,k)),[0 h],x_nL_d(:,k));
     
     x_nL_d(:,k+1) = x(end,:)';
     y_nL_d(:,k) = C*(x_nL_d(:,k));

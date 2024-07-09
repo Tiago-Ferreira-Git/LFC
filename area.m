@@ -49,6 +49,10 @@ classdef area
 
             obj.bus = bus;
             obj.mac_nr = [];
+
+            obj.res_nr = [];
+            obj.res_bus = [];
+            obj.res = 0;
             
         end
     end

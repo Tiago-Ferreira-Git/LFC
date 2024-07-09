@@ -5,18 +5,18 @@ run("D:\OneDrive - Universidade de Lisboa\Aulas\Tese\Simulations\Power System To
 opt = mpoption('verbose',0,'out.all',0);
 
 
-flag_ren = 0;
+flag_ren = 1;
 flag_plot_metrics = 0;
 
 
-[mpc,n_res,idx_initial] = get_g('case14',flag_ren);
+[mpc,n_res,idx_initial] = get_g('case118',flag_ren);
 idx = idx_initial;
 mpc = runopf(mpc,opt);
 clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial
 
 mpc_initial = mpc;
 
-mac_remove =  [3 12 40];
+mac_remove =  [12 40];
 %mac_remove = [];
 
 n_gen = size(mpc.gen,1);
@@ -24,11 +24,11 @@ n_gen = size(mpc.gen,1);
 n_areas = 250;
 n_areas = 30;
 
-[A,B,C,D,W,machine_ss,C_mech,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren);
+[A_c,B_c,C,D,W,machine_ss,C_mech,~,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren);
 network_initial = network;
 %%
 h = 2.5;
-[A,B,W] = discrete_dynamics(A,B,W,h);
+[A,B,W] = discrete_dynamics(A_c,B_c,W,h);
 save('data/ss.mat',"A","B","C","D","W")
 bus_remove = [];
 % for i = 1:5:n_areas
@@ -54,7 +54,7 @@ tic
 
 
 simulation_hours = 24;
-t_fault = 13;
+t_fault = 12;
 % t_fault = 3600*(t_fault)/h;
 
 t = 0:h:3600*simulation_hours;
@@ -64,6 +64,12 @@ w = zeros(size(W,2),size(t,2));
 x0 = zeros(size(A,1),1);
 
 mask = t > 30;
+
+
+[nominal,nominal_fault,w_m] = nominal_profiles(simulation_hours,n_gen,n_res,n_areas,mpc,network,idx_initial,t_fault,mac_remove,bus_remove,flag_ren,h,size(A_c,1),bus_ss(:,2));
+
+%w_res = w_m(ren_ss,:);
+w_res = w_m([],:);
 
 w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss);
 
@@ -87,65 +93,17 @@ P_gen = zeros(2,size(mpc.gen,1));
 Q_gen = zeros(2,size(mpc.gen,1));
 
 
-nominal = zeros(simulation_hours,n_gen-n_res);
-nominal_fault = zeros(simulation_hours,n_gen-n_res);
-
-
-
-mpc_ = mpc;
-mpc_fault = mpc;
-mask = true(1,n_gen-n_res);
-
-mac_idx = zeros(n_gen-n_res,1);
-
-j = 1;
-for i = 1:n_areas
-    mac_idx(j:j+network(i).machines-1,1) =  network(i).mac_nr;
-    j = j + network(i).machines;
-end
-
-for i = 1:simulation_hours
-    [mpc_,~,~,~,~,~,~,~] = update_dynamics(mpc_,network,flag_ren,i,mpc_initial,idx,h);
-    nominal(i,:) = mpc_.gen(1:end-n_res,2);
-
-
-    if i == t_fault
-        mask = true(1,n_gen-n_res);
-        mask(mac_remove) = 0;
-        idx = idx_initial - size(mac_remove,2);
-        [~,~,~,~,~,~,~,mpc_fault,~] = fault(mpc_fault,network,flag_ren,mac_remove,bus_remove,h);
-    end
-    [mpc_fault,~,~,~,~,~,~,~] = update_dynamics(mpc_fault,network,flag_ren,i,mpc_initial,idx,h);
-    nominal_fault(i,mask) = mpc_fault.gen(1:end-n_res,2);
-    nominal_fault(i,~mask) = 0;
-end
-
-figure
-hold on
-p3 = plot(1:simulation_hours,nominal./mpc.baseMVA,'Color',[0.8500 0.3250 0.0980],'LineWidth',1.4);
-p1 = plot(1:simulation_hours,nominal_fault./mpc.baseMVA,'Color',[0 0.4470 0.7410],'LineWidth',1.4);
-ylabel('$P_G$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-legend([p3(1) p1(1)],{'Nominal','Nominal Fault'})
-hold off
-set(gcf,'renderer','Painters');
-title='./fig/nominal.png';
-saveas(gca,title,'png');
-
-
-nominal_fault = nominal_fault(:,mac_idx);
-nominal = nominal(:,mac_idx);
 
 
 
 %Frequency output limit according to [1] 
 freq_limit = 0.05/50;
 
-w_m = ( nominal - nominal_fault)'./mpc.baseMVA;
-k_ = 1:3600/h:size(w,2);
-for hour=1:simulation_hours
-    w_mech(:,k_(hour):k_(hour+1)) = repmat(w_m(:,hour),1,3600/h +1);
-end
+% w_m = ( nominal - nominal_fault)'./mpc.baseMVA;
+% k_ = 1:3600/h:size(w,2);
+% for hour=1:simulation_hours
+%     w_mech(:,k_(hour):k_(hour+1)) = repmat(w_m(:,hour),1,3600/h +1);
+% end
 
 
 
@@ -189,34 +147,20 @@ for control_type = 1:2
     x(:,1) = x0;
     for k = 1:length(t)-1
         
-        if(k == k_(hour) && k ~= 1)
-           
-            [mpc,A,B,C,D,W,~,k_tie] = update_dynamics(mpc,network,flag_ren,hour,mpc_initial,idx,h);
-            %to_plot(hour,:) = k_tie;
-            
-            flag = 1;
-            hour = hour + 1;
-
-            if(hour == t_fault)
-
-                idx = idx_initial - size(mac_remove,2);
-                [A,B,C,W,machine_ss,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_remove,bus_remove,h);
-                
-            
-            end 
-        end
-        
 
         
+
+        x(:,k) = x(:,k) + w_m(:,hour);
             
         
         delta_u(:,k) = -K*x(:,k);
+        %+ C_mech*w_m(:,hour);
         %delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
-
-        x(:,k+1) = A*x(:,k) + B*delta_u(:,k) + B*w_m(:,hour) + W*w(:,k);
+        
+        x(:,k+1) = A*x(:,k) + B*delta_u(:,k) + W*w(:,k);
         y(:,k+1) = C*x(:,k+1);
 
-        y(1:4:end,k) = min(max(y(1:4:end,k),-freq_limit),freq_limit);
+        % y(1:4:end,k) = min(max(y(1:4:end,k),-freq_limit),freq_limit);
         
         %Controller performance metric 
         if all(abs(y(1:4:end,k+1)) < 1e-9) && flag
@@ -235,6 +179,24 @@ for control_type = 1:2
         
         %delta_u(:,k)
         u(:,k) = delta_u(:,k)*100 + nominal_fault(hour,:)';
+
+        if(k == k_(hour) && k ~= 1)
+        
+            [mpc,A,B,C,D,W,~,k_tie] = update_dynamics(mpc,network,flag_ren,hour,mpc_initial,idx,h);
+            %to_plot(hour,:) = k_tie;
+            
+            flag = 1;
+            
+            if(hour == t_fault)
+
+                idx = idx_initial - size(mac_remove,2);
+                [A,B,C,W,machine_ss,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_remove,bus_remove,h);
+
+
+            end 
+            hour = hour + 1;
+        end
+
 
     end
 
@@ -256,11 +218,11 @@ for control_type = 1:2
     box on;
     stairs(t,y(:,1:4:end)*1e6,'LineWidth',1.5);
     %xlim([t_fault*h - 3600  t_fault*h + 3600])
-    %ylim([min(y(:,1:4:end),[],'all')*1.3*1e6,max(y(:,1:4:end),[],'all')*1.3*1e6])
-    ylim([-210 20])
+    ylim([min(y(:,1:4:end),[],'all')*1.3*1e6,max(y(:,1:4:end),[],'all')*1.3*1e6])
+    %ylim([-210 20])
     yline(freq_limit*1e6,'--');
     yline(-freq_limit*1e6,'--');
-    xline((t_fault-1)*3600,'LineWidth',0.5,'LineStyle','--','Color','black')
+    xline((t_fault)*3600,'LineWidth',0.5,'LineStyle','--','Color','black')
     legend('$\Delta\omega_1$','$\Delta\omega_2$','$\Delta\omega_3$','Interpreter','latex','Location','best')
     ylabel('$\Delta\omega$ ($\mu$pu)','interpreter','latex');
     xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
@@ -275,17 +237,44 @@ for control_type = 1:2
 end
 
 
+%% Nonlinear Simulation
+
+% tspan = [0 simulation_hours*3600];
+% 
+% 
+% u_index = zeros(length(network)+1,1);
+% u_index(1) = 1;
+% for i = 1:length(network) 
+%     u_index(i+1) = u_index(i) + network(i).machines;
+% end
+% 
+% 
+% w_index = zeros(length(network)+1,1);
+% w_index(1) = 1;
+% for i = 1:length(network) 
+%     w_index(i+1) = w_index(i) + size(network(i).W,2);
+% end
+% 
+% 
+% 
+% K = lqr(A_c,B_c,diag(q),0.1*eye(size(B,2)));
+% 
+% [t_nL,x_nL] = ode45(@(t,x_nL) nonlinear_model(t,x_nL,K,network,bus_ss,x0,u_index,w(:,1:3600/h:size(w,2)),w_index,C_mech*w_m,simulation_hours), tspan,x0);
+% y_nL = C*x_nL';
+% P_mech_nL = (C_mech*x_nL');
+
+
+
+
 if flag_plot_metrics
     plot_metrics(n_areas,size(B,2),simulation_hours,frequency_error_cost,disp_cost_area,disp_cost_machine,time_settling_cost,R_,to_plot)
 end
 
 
 
-
+%%
 P_mech = (C_mech*x);
 
-
-%%
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
@@ -302,14 +291,14 @@ hold off
 set(gcf,'renderer','Painters');
 title='./fig/delta_p_m.png';
 saveas(gca,title,'png');
-%%
 
+%%
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t,w_mech','LineWidth',1.5);
+stairs(1:simulation_hours,(C_mech*w_m)','LineWidth',1.5);
 xline((t_fault-1)*h,'LineWidth',0.5,'LineStyle','--','Color','black')
 legend('$ w_{m_1}$','$w_{m_2}$','$w_{m_3}$','$w_{m_4}$','$w_{m_5}$','Interpreter','latex','Location','best')
 ylabel('Disturbance (pu)','interpreter','latex');
@@ -321,8 +310,8 @@ set(gcf,'renderer','Painters');
 title='./fig/disturbance_mech.png';
 saveas(gca,title,'png');
 
-
 %%
+
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
@@ -340,7 +329,7 @@ set(gcf,'renderer','Painters');
 title='./fig/delta_u.png';
 saveas(gca,title,'png');
 
-
+%%
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
@@ -408,7 +397,7 @@ box on;
 stairs(t,y(:,4:4:end),'LineWidth',1.5);
 xline((t_fault-1)*h,'LineWidth',0.5,'LineStyle','--','Color','black')
 legend('$\Delta \delta_{1}$','$\Delta \delta_{2}$','$\Delta \delta_{3}$','Interpreter','latex')
-ylabel('$\Delta \delta$ (pu)','interpreter','latex');
+ylabel('$\Delta \delta$ (rads)','interpreter','latex');
 xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
 xticks(0:3600:simulation_hours*3600)
 xticklabels(sprintfc('%d', 0:simulation_hours))

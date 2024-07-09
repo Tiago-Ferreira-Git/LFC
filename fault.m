@@ -22,9 +22,14 @@ function [A,B,C,W,W_mech,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_
         end
         
         %clear active and reactive power in the bus array
-        mpc.bus(mpc.gen(mac_fault,1),10) = 1;
-        mpc.gen(mac_fault,:) = [];
-        mpc.gencost(mac_fault,:) = [];
+        %mpc.bus(mpc.gen(mac_fault,1),10) = 1;
+        mpc.gen(mac_fault,2) = 0;
+        mpc.gen(mac_fault,3) = 0;
+        mpc.gen(mac_fault,4) = 1e-6;
+        mpc.gen(mac_fault,5) = -1e-6;
+        mpc.gen(mac_fault,9) = 0;
+        mpc.gen(mac_fault,10) = 0;
+        %mpc.gencost(mac_fault,:) = [];
         
 
     end
