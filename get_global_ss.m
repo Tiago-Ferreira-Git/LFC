@@ -1,4 +1,4 @@
-function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren,network)
+function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,A_areas] = get_global_ss(mpc,n_areas,flag_ren,network)
     
     base_mva = 100;
     ren_data = load('data\solar.mat');
@@ -180,7 +180,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B_freq = 1/network(i).inertia;
         
         freq_feedback = zeros(size(B_area,1),1);
-        %freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+        freq_feedback(3:3:end) = -network(i).tg_con(:,4);
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
 
@@ -270,7 +270,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
     end
     
-    
+    A_areas = A_global;
     
     %%
 

@@ -4,10 +4,10 @@ run("D:\OneDrive - Universidade de Lisboa\Aulas\Tese\Simulations\Power System To
 opt = mpoption('verbose',0,'out.all',0);
 
 
-flag_ren = 0;
+flag_ren = 1;
 flag_plot_metrics = 0;
 
-[mpc,n_res,idx_initial] = get_g('case14',flag_ren);
+[mpc,n_res,idx_initial] = get_g('case118',flag_ren);
 idx = idx_initial;
 mpc = runopf(mpc,opt);
 
@@ -17,19 +17,19 @@ mpc_initial = mpc;
 
 n_gen = size(mpc.gen,1);
 
-n_areas = 3;
+n_areas = 30;
 
-[A_c,B_c,C,~,W,~,C_mech,~,E,~,network,bus_ss,ren_ss] = get_global_ss_(mpc,n_areas,flag_ren);
+[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,A_c_area] = get_global_ss(mpc,n_areas,flag_ren);
 %%
 network_initial = network;
-h = 2.5;
-[A,B,W] = discrete_dynamics(A_c,B_c,W,h);
+h = 0.5;
+[A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 %save('data/sim_118_30_res')
 
 %%
 % clear all
 % clearvars -except path; close all; clc;
-%load('data/sim_118_30_res')
+% load('data/sim_118_30_res')
 
 
 
@@ -40,7 +40,7 @@ q = zeros(1,size(A,1));
 freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
 q(1,freq_index) = 40;
 angle_index = cumsum(bus_ss(:,2));
-q(1,angle_index) = 1;
+q(1,angle_index) = 100;
 
 
 % q(1,freq_index(17)) = 10;
@@ -72,8 +72,7 @@ w = zeros(size(W,2),size(t_L,2));
 %w_ = [t_L ; w];
 
 P_res = x0(ren_ss,1) + w_ren;
-P_load = PL0;
-%+ w_load;
+P_load = PL0 + w_load;
 
 
 P_res = P_res(:,1:3600/h:end);
@@ -81,33 +80,32 @@ P_load = P_load(:,1:3600/h:end);
 
 
 
-% %% Nonlinear Simulation
+%% Nonlinear Simulation
 
 
 
-tspan = [0 3600];
+tspan = [0 3600*simulation_hours];
 
 
-u_index = zeros(length(network)+1,1);
-u_index(1) = 1;
-for i = 1:length(network) 
-    u_index(i+1) = u_index(i) + network(i).machines;
-end
-
-w_index = zeros(length(network)+1,1);
-w_index(1) = 1;
-for i = 1:length(network) 
-    w_index(i+1) = w_index(i) + size(network(i).W,2);
-end
+% u_index = zeros(length(network)+1,1);
+% u_index(1) = 1;
+% for i = 1:length(network) 
+%     u_index(i+1) = u_index(i) + network(i).machines;
+% end
+% 
+% w_index = zeros(length(network)+1,1);
+% w_index(1) = 1;
+% for i = 1:length(network) 
+%     w_index(i+1) = w_index(i) + size(network(i).W,2);
+% end
 
 
 
 opts = odeset('RelTol',1e-6,'AbsTol',1e-6);
 K = lqr(A_c,B_c,diag(q),0.1*eye(size(B,2)));
 
-delta_u = 0.001*ones(size(B,2),1);
 
-[t_nL,x_nL] = ode45(@(t,x_nL) xdot(t,x_nL,K,network,bus_ss,x0,u0,u_index,w,w_index,delta_u), tspan,x0,opts);
+[t_nL,x_nL] = ode45(@(t,x_nL) nonlinear_model(t,x_nL,K,network,bus_ss,x0,u0,w(:,1:3600/h:end),A_c_area,B_c,W_c), tspan,x0,opts);
 
 
 y_nL = C*x_nL';
@@ -127,12 +125,12 @@ for k = 1:length(t_L)
     k
     delta_u(:,k) = -K*x_nL_d(:,k);
     %delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
-    delta_u(:,k) = 0.001*ones(size(delta_u(:,k)));
+    %delta_u(:,k) = 0.001*ones(size(delta_u(:,k)));
     %delta_u = min(max(delta_u,-0.1),0.1);
 
-    
-    [~,x] = ode45(@(t,x) xdot(t,x,K,network,bus_ss,x0,u0,u_index,w,w_index,delta_u(:,k)),[0 h],x_nL_d(:,k));
-    
+
+    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,w(:,1:3600/h:end),A_c_area,B_c,W_c,delta_u(:,k)),[0 h],x_nL_d(:,k));
+
     x_nL_d(:,k+1) = x(end,:)';
     y_nL_d(:,k) = C*(x_nL_d(:,k));
 end
@@ -158,13 +156,8 @@ for k = 1:length(t_L)-1
 
 
     delta_u(:,k) = -K*x_L(:,k);
-    %delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
-    delta_u = -0.1*ones(size(delta_u));
-    
 
-    x_L(:,k+1) = A*x_L(:,k) + B*delta_u(:,k);
-    C_mech*x_L(:,k);
-    %+ W*w(:,k);
+    x_L(:,k+1) = A*x_L(:,k) + B*delta_u(:,k)+ W*w(:,k); 
 
     y_L(:,k+1) = C*(x_L(:,k+1)+x0);
 
@@ -193,7 +186,7 @@ for i = 1:n_areas
     plot(t_nL,y_nL(1+4*(i-1),:),'LineWidth',1.5);
     stairs(t_L,y_L(1+4*(i-1),:)','LineWidth',1.5);
     stairs(t_L,y_nL_d(1+4*(i-1),:)','LineWidth',1.5);
-    %xlim([40 60])
+    xlim([60 100])
     %ylim([0.99995 1.00005])
     yline(1+freq_limit,'--');
     yline(1-freq_limit,'--');
