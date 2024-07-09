@@ -3,9 +3,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     base_mva = 100;
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
+    n_machine = size(mpc.gen,1)-length(ren_data.bus);
     if(nargin <= 3)
+        lines = [];
         if flag_ren
-            areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:end-length(ren_data.bus),1));
+            areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:n_machine,1));
         else
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
         end
@@ -90,10 +92,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     
     
     %% Generate the ss for each area
+    
     bus_ss = [];
     A_global = [];
     B_global = [];
     C_global = [];
+    C_ren = [];
     W_global = [];
     %W_global_mech = [];
 
@@ -170,6 +174,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     
         end
     
+
+        % Non-linear Simulation
+        network(i).A = A_area;
+        network(i).B = B_area;
+        
+
         
         
     
@@ -177,7 +187,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B_freq = 1/network(i).inertia;
         
         freq_feedback = zeros(size(B_area,1),1);
-        freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+        %freq_feedback(3:3:end) = -network(i).tg_con(:,4);
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
 
@@ -186,10 +196,19 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         
         %Add renewables state
-        if any(ismember(network(i).bus,ren_data.bus)) && flag_ren
+        mask = ismember(network(i).bus,ren_data.bus);
+        if any(mask) && flag_ren
             index = size(A_global,1) + size(A,1);
             
-            n_ren = sum(ismember(network(i).bus,ren_data.bus)) ;
+            generator_mask = zeros(size(mpc.gen,1),1);
+            generator_mask(n_machine+1:end) = 1;
+
+            network(i).res_bus = network(i).bus(mask);
+            network(i).res_nr = find(bitand(ismember(mpc.gen(:,1),network(i).bus(mask)),generator_mask) == 1);
+            
+
+            n_ren = sum(mask);
+            network(i).res = n_ren;
             ren_ss(n_areas:n_areas+n_ren-1) = index+1:1:index+n_ren;
             
             for j = 1:n_ren
@@ -213,9 +232,6 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         W = zeros(size(B,1),n_ren+1);
 
-        % Machine
-        %W_mech = zeros(size(B,1),size(B_area,2));
-        %W_mech(1,:) = B_freq;
 
 
         %Load disturbance
@@ -229,7 +245,13 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             index  = index - size(A_global,1);
             W(index,2:end) = Kpv/Tpv*eye(n_ren);
             n_areas = n_areas + n_ren;
+            network(i).C_res = zeros(1,size(A));
+            network(i).C_res(end-n_ren:end-1) = 1;
+            network(i).W_res = Kpv/Tpv*eye(n_ren);
         end
+    
+
+        
 
 
         C = zeros(4,size(A,1));
@@ -237,11 +259,16 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         C(1,1) = 1;
         C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
         %C(3,end) = 1;
-        C(4,end) = -1;
+        C(4,end) = -1*2*pi*60;
 
+        network(i).C_mech = C(2,:);
+
+        network(i).W = W;
+        
+        
         
 
-        bus_ss = [bus_ss; i size(A,1) size(network(i).tg_con,1) n_ren B_freq];
+        bus_ss = [bus_ss; i size(A,1) size(network(i).tg_con,1) n_ren];
         A_global = [A_global zeros(size(A_global,1), size(A,2)) ; zeros(size(A,1), size(A_global,2)) A ];
         B_global = [B_global zeros(size(B_global,1), size(B,2)); zeros(size(B,1), size(B_global,2)) B];
         C_global = [C_global zeros(size(C_global,1), size(C,2)); zeros(size(C,1), size(C_global,2)) C];
@@ -281,7 +308,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
         for j = 1:size(neighbours,1)
-            T_ji = 377*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
+            T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
 
             % T_ji =  T_ji/10000;
 
@@ -289,7 +316,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             %A_global(index_ss(i+1)-1, index_ss(neighbours(j,1))) =  A_global(index_ss(i+1)-1, index_ss(neighbours(j,1)) ) -T_ji;
             
             %Changin ptie for error integral
-            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji*bus_ss(i,5);
+            %A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji/network(i).inertia;
             
 
             E(tg_size(i):tg_size(i+1)-1,index_ss(neighbours(j,1)):index_ss(neighbours(j,1)+1)-1) = ones(bus_ss(i,3),bus_ss(neighbours(j,1),2));
@@ -300,7 +327,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             T_i =  T_i + T_ji;
 
-            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
+            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
@@ -310,7 +337,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %Default
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
         
-        A_global(index_ss(i), index_ss(i+1)-1) = T_i*bus_ss(i,5);
+        %A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
         C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end

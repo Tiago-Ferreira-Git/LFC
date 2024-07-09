@@ -15,6 +15,16 @@ classdef area
         mac_bus;
         lmod
         mac_nr
+        res_bus
+        res_nr
+        res
+        A
+        B
+        C
+        C_mech
+        C_res
+        W_res
+        W
     end
 
     methods
@@ -39,6 +49,10 @@ classdef area
 
             obj.bus = bus;
             obj.mac_nr = [];
+
+            obj.res_nr = [];
+            obj.res_bus = [];
+            obj.res = 0;
             
         end
     end

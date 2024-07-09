@@ -1,4 +1,4 @@
-function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
+function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss,w_res)
     w_load_hour = load('data\w_load.mat');
     w_load_hour = w_load_hour.w_load(:,1:24);
     
@@ -27,6 +27,9 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
     if 24 < simulation_hours 
         w_load_hour = repmat(w_load_hour,1,floor(simulation_hours/24)+1);
         w_ren_hour =  repmat(w_ren_hour,1,floor(simulation_hours/24)+1);
+    else            
+        w_load_hour = w_load_hour(:,1:simulation_hours);
+        w_ren_hour = w_ren_hour(:,1:simulation_hours);
     end
     
     %w_ren_hour = zeros(size(w_ren_hour));
@@ -38,62 +41,64 @@ function w = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss)
     load_mask = logical(load_mask);
 
     ren_mask = ~load_mask;
-
-
+    if(nargin > 5 )
+     w_ren_hour = w_ren_hour + w_res;
+    end
     k_ = 1:3600/h:size(w,2);
     for hour=1:simulation_hours
-        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*1000;
+        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
         w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
     end
     
-
+    w_load = w(load_mask,:);
+    w_ren = w(ren_mask,:);
     
 
     
     
-    for i = 1:size(w,1)
-
-        freq_pole = 0.005;
-        a = [1 -exp(-h*freq_pole)];
-        b = 1-exp(-h*freq_pole);
-        w(i,:) = filter(b,a,w(i,:));
-       
-    end
+    % for i = 1:size(w,1)
+    % 
+    %     freq_pole = 0.005;
+    %     a = [1 -exp(-h*freq_pole)];
+    %     b = 1-exp(-h*freq_pole);
+    %     w(i,:) = filter(b,a,w(i,:));
+    % 
+    % end
 
     t = 0:h:3600*simulation_hours;
-    % figure
-    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    % hold on
-    % grid on
-    % box on;
-    % stairs(t,w(load_mask,:)','LineWidth',1.5);
-    % legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
-    % ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
-    % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-    % xticks(0:3600:simulation_hours*3600)
-    % xticklabels(sprintfc('%d', 0:simulation_hours))
-    % hold off
-    % set(gcf,'renderer','Painters');
-    % title='./fig/delta_p_load.png';
-    % saveas(gca,title,'png');
+    figure
+    set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    hold on
+    grid on
+    box on;
+    stairs(t,w(load_mask,:)','LineWidth',1.5);
+    legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
+    ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
+    xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+    xticks(0:3600:simulation_hours*3600)
+    xticklabels(sprintfc('%d', 0:simulation_hours))
+    hold off
+    set(gcf,'renderer','Painters');
+    title='./fig/delta_p_load.png';
+    saveas(gca,title,'png');
     
     
     if(any(ren_mask))
-        % figure
-        % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        % hold on
-        % grid on
-        % box on;
-        % stairs(t,w(ren_mask,:)','LineWidth',1.5);
-        % legend('$\Delta P_{{ren}_1}$','$\Delta P_{{ren}_2}$','$\Delta P_{{ren}_3}$','Interpreter','latex')
-        % ylabel('$\Delta P_{ren}$ (pu)','interpreter','latex');
-        % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-        % xticks(0:3600:simulation_hours*3600)
-        % xticklabels(sprintfc('%d', 0:simulation_hours))
-        % hold off
-        % set(gcf,'renderer','Painters');
-        % title='./fig/p_ren.png';
-        % saveas(gca,title,'png');
+        figure
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        hold on
+        grid on
+        box on;
+        stairs(t,w(ren_mask,:)','LineWidth',1.5);
+        legend('$\Delta P_{{ren}_1}$','$\Delta P_{{ren}_2}$','$\Delta P_{{ren}_3}$','Interpreter','latex')
+        ylabel('$\Delta P_{ren}$ (pu)','interpreter','latex');
+        xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+        xticks(0:3600:simulation_hours*3600)
+        xticklabels(sprintfc('%d', 0:simulation_hours))
+        hold off
+        set(gcf,'renderer','Painters');
+        title='./fig/p_ren.png';
+        saveas(gca,title,'png');
     end
 
 end
