@@ -1,11 +1,10 @@
-function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren,network)
+function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,network)
     
     base_mva = 100;
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
     n_machine = size(mpc.gen,1)-length(ren_data.bus);
     if(nargin <= 3)
-        lines = [];
         if flag_ren
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:n_machine,1));
         else
@@ -38,7 +37,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
                 for j=1:n_areas
                     if ismember(i, network(j).bus)
                         network(j).inertia = network(j).inertia + mpc.mac_con(mask,16);
-                        network(j).damping = network(j).damping + mpc.mac_con(mask,17);
+                        
+                        %network(j).damping = network(j).damping + mpc.mac_con(mask,17);
                         network(j).machines = network(j).machines + 1;
                         network(j).tg_con = [network(j).tg_con ; mpc.tg_con(mpc.mac_con(mask,1),:)];
     
@@ -55,8 +55,10 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
         end
         
+        
         for j=1:n_areas
-            network(j).damping = network(j).damping/network(j).machines;
+            %network(j).damping = network(j).damping/network(j).machines;
+            network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100);
             network(j).inertia = network(j).inertia/network(j).machines;
         end
 
@@ -187,7 +189,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B_freq = 1/network(i).inertia;
         
         freq_feedback = zeros(size(B_area,1),1);
-        %freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+        freq_feedback(3:3:end) = -network(i).tg_con(:,4);
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
 
@@ -245,7 +247,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             index  = index - size(A_global,1);
             W(index,2:end) = Kpv/Tpv*eye(n_ren);
             n_areas = n_areas + n_ren;
-            network(i).C_res = zeros(1,size(A));
+            network(i).C_res = zeros(1,size(A,1));
             network(i).C_res(end-n_ren:end-1) = 1;
             network(i).W_res = Kpv/Tpv*eye(n_ren);
         end
@@ -292,6 +294,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     %Add tie-lines
     Adjacency_matrix = zeros(n_areas); 
     E = zeros(size(B_global,2),size(A_global,1));
+    E_fs = zeros(size(B_global,2),size(A_global,1));
 
     %L is the E matrix for the integrators
     L = zeros(size(B_global,2),n_areas);
@@ -306,6 +309,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         neighbours = network(i).to_bus;
 
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
+        E_fs(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
         for j = 1:size(neighbours,1)
             T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
@@ -316,7 +320,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             %A_global(index_ss(i+1)-1, index_ss(neighbours(j,1))) =  A_global(index_ss(i+1)-1, index_ss(neighbours(j,1)) ) -T_ji;
             
             %Changin ptie for error integral
-            %A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji/network(i).inertia;
+            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji/network(i).inertia;
             
 
             E(tg_size(i):tg_size(i+1)-1,index_ss(neighbours(j,1)):index_ss(neighbours(j,1)+1)-1) = ones(bus_ss(i,3),bus_ss(neighbours(j,1),2));
@@ -327,7 +331,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             T_i =  T_i + T_ji;
 
-            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
+            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
@@ -337,7 +341,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %Default
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
         
-        %A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
+        A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
         C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end
