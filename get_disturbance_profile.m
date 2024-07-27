@@ -1,4 +1,4 @@
-function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_hours,bus_ss,w_res)
+function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss)
     w_load_hour = load('data\w_load.mat');
     w_load_hour = w_load_hour.w_load(:,1:24);
     
@@ -21,7 +21,7 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_hours
         w_ren_hour = w_ren_hour(1:n_ren,:);
     end
 
-    
+    simulation_hours = ceil(simulation_seconds/3600);
     
     %if the hours in the data available is lower than the simulation hour
     if 24 < simulation_hours 
@@ -32,8 +32,6 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_hours
         w_ren_hour = w_ren_hour(:,1:simulation_hours);
     end
     
-    %w_ren_hour = zeros(size(w_ren_hour));
-
 
     load_mask = zeros(1,size(w,1));
     load_mask(1) = 1;
@@ -41,13 +39,21 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_hours
     load_mask = logical(load_mask);
 
     ren_mask = ~load_mask;
-    if(nargin > 5 )
-     w_ren_hour = w_ren_hour + w_res;
-    end
-    k_ = 1:3600/h:size(w,2);
-    for hour=1:simulation_hours
-        w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
-        w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
+
+
+    k_ = 1:3600/h:simulation_hours*3600/h;
+
+    for k=1:simulation_seconds/h + 1
+        
+        if ~isempty(find(k == k_, 1))
+            hour = find(k == k_);
+        end
+        w(load_mask,k) = w_load_hour(:,hour).*100;
+        w(ren_mask,k) = w_ren_hour(:,hour);
+        
+
+        %w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
+        %w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
     end
     
     w_load = w(load_mask,:);
@@ -65,7 +71,7 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_hours
     % 
     % end
 
-    t = 0:h:3600*simulation_hours;
+    t = 0:h:(size(w,2)-1)*h;
     figure
     set(gca,'TickLabelInterpreter','latex') % Latex style axis
     hold on

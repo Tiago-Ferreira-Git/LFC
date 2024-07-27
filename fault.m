@@ -1,22 +1,31 @@
-function [A,B,C,W,W_mech,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_fault,tie_fault,h)
+function [A,B,C,W,machine_ss,E,network,mpc,bus_ss,x] = fault(mpc,network,flag_ren,mac_fault,tie_fault,h,x,ss_dim)
 
 
     
 
     if ~isempty(mac_fault)
+
+        %Cannot remove the reference machine
         if(any(mpc.bus(mpc.gen(mac_fault,1),2) == 3))
             mask = ismemeber(mac_fault, find(mpc.bus(:,2) == 3));
             mac_fault(mask) = [];
+            warning 'User tried to apply fault to the reference machine, ignored this command'
         end
 
         %mac_fault is the generator number
         for i = 1:size(mac_fault,2)
             %clear variables in the network structure
+            x_index = 1;
             for j = 1:size(network,2)
+                
                 mask = network(j).mac_nr == mac_fault(i);
                 if(any(mask))
                     network(j).tg_con(mask,:) = zeros(size(network(j).tg_con(1,:)));
+                    mac_index = 3* (find(network(j).mac_nr == mac_fault(i)) - 1);
+                    mask = x_index + mac_index +1 : x_index + mac_index +1 + 2;
+                    x(mask) = 0;
                 end
+                x_index = x_index + ss_dim(j);
             end
         
         end
@@ -66,9 +75,8 @@ function [A,B,C,W,W_mech,E,network,mpc,bus_ss] = fault(mpc,network,flag_ren,mac_
     end
 
     n_areas = size(network,2);
-    [A,B,C,D,W,W_mech,~,~,E,~,network,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,network);
+    [A,B,C,~,W,machine_ss,~,~,E,~,network,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,network);
     
-    %[~,~,W_mech] = discrete_dynamics(A,B,W_mech,h);
     [A,B,W] = discrete_dynamics(A,B,W,h);
 
 

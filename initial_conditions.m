@@ -1,4 +1,4 @@
-function [x0,u0,Pt0,PL0] = initial_conditions(ss_dim,n_machines,bus_ss,network,mpc)
+function [x0,u0,Pt0,PL0,Ploss] = initial_conditions(ss_dim,n_machines,bus_ss,network,mpc)
 
     %Pt0 - Tie-line initial value per area
     %PL0 - Initial Consuption values per area
@@ -8,6 +8,7 @@ function [x0,u0,Pt0,PL0] = initial_conditions(ss_dim,n_machines,bus_ss,network,m
     u0 = zeros(n_machines,1);
     PL0 = zeros(length(network),1);
     Pt0 = zeros(length(network),1);
+    Ploss = zeros(length(network),1);
 
     angle_index = cumsum(bus_ss);
     freq_index = [1 ; angle_index+1];
@@ -15,7 +16,7 @@ function [x0,u0,Pt0,PL0] = initial_conditions(ss_dim,n_machines,bus_ss,network,m
     x0(freq_index(1:end-1),1) = 1;
    
 
-    x0(angle_index,1) = pi/30;
+    %x0(angle_index,1) = pi/30;
     %x0(freq_index(1:end-1),1) = 0;
     % x0(angle_index,1) = 0;
     j = 1;
@@ -33,22 +34,29 @@ function [x0,u0,Pt0,PL0] = initial_conditions(ss_dim,n_machines,bus_ss,network,m
             x0_gen(n+1:1: n+ network(i).res) = mpc.gen(network(i).res_nr,2)./mpc.baseMVA;
         end
         x0(gen_index) = x0_gen;
-        %x0(angle_index(i)) =  deg2rad(mean(mpc.bus(network(i).mac_nr,9)));
+        x0(angle_index(i)) =  deg2rad(mean(mpc.bus(network(i).mac_nr,9)));
         u0(j:j+network(i).machines-1) = mpc.gen(network(i).mac_nr,2)./mpc.baseMVA;
         j = j+network(i).machines;
 
 
-        PL0(i) = sum(mpc.gen(network(i).mac_nr,2)./100);
+        %PL0(i) = sum(mpc.gen(network(i).mac_nr,2)./100);
 
-        %PL0(i) = sum(mpc.bus(network(i).bus,3));
+        PL0(i) = sum(mpc.bus(network(i).bus,3)./100);
         
-        mask_outside_area = bitand(ismember(mpc.branch(:,1),network(i).bus),ismember(mpc.branch(:,2),network(i).bus));
+        mask_outside_area = bitxor(ismember(mpc.branch(:,1),network(i).bus),ismember(mpc.branch(:,2),network(i).bus));
         mask = ismember(mpc.branch(:,1),network(i).bus,'rows');
         mask = bitand(mask_outside_area,mask);
         Pt0(i) = sum(mpc.branch(mask,14))./mpc.baseMVA;
         mask = ismember(mpc.branch(:,2),network(i).bus,'rows');
         mask = bitand(mask_outside_area,mask);
         Pt0(i) = Pt0(i) + sum(mpc.branch(mask,16))./mpc.baseMVA;
+
+
+        %% Testing losses inside area
+
+        mask_inside_area = bitand(ismember(mpc.branch(:,1),network(i).bus),ismember(mpc.branch(:,2),network(i).bus));
+        Ploss(i) = sum(mpc.branch(mask_inside_area,14))./mpc.baseMVA + sum(mpc.branch(mask_inside_area,16))./mpc.baseMVA;
+        PL0(i) = PL0(i) + Ploss(i);
 
     end
 

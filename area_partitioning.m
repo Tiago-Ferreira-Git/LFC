@@ -23,13 +23,6 @@ function areas = area_partitioning(lines,k,machine_buses)
     [Eig,I] = sort(Eig);
     V = V(:,I);
 
-    % figure
-    % scatter(V(:,2),V(:,3))
-    %select the eigen values greater than zero
-    %mask = Eig > 1e-2;
-    %V = V(:,mask);
-    %3
-    %[areas,~] = kmeans(V(:,2:k-2),k,'Distance','cosine');
     j = 0;
     flag = false;
     while ~flag

@@ -1,10 +1,10 @@
-function [nominal,nominal_fault,w_m] = nominal_profiles(simulation_hours,n_gen,n_res,n_areas,mpc_initial,network,idx_initial,t_fault,mac_remove,bus_remove,flag_ren,h,dim_ss,bus_ss)
+function [nominal,nominal_fault] = nominal_profiles(simulation_hours,n_gen,n_res,n_areas,mpc_initial,network,idx_initial,t_fault,mac_remove,bus_remove,flag_ren,h,C_mech,bus_ss)
 
     
     nominal = zeros(simulation_hours,n_gen-n_res);
     nominal_fault = zeros(simulation_hours,n_gen-n_res);
-    w_m = zeros(dim_ss,simulation_hours);
-
+    initial_contiditions = zeros(size(C_mech,2),simulation_hours);
+    
     
     mpc_ = mpc_initial;
     mpc_fault = mpc_initial;
@@ -32,18 +32,25 @@ function [nominal,nominal_fault,w_m] = nominal_profiles(simulation_hours,n_gen,n
         end
         [mpc_fault,~,~,~,~,~,~,~] = update_dynamics(mpc_fault,network,flag_ren,i,mpc_initial,idx,h);
         nominal_fault(i,:) = mpc_fault.gen(1:end-n_res,2);
-
-        w_m(:,i) = initial_conditions(dim_ss,bus_ss,network,mpc_fault);
         %nominal_fault(i,~mask) = 0;
-
+        [x0,u0,Pt0,PL0,Ploss]  = initial_conditions(size(C_mech,1),n_gen,bus_ss(:,2),network,mpc_);
+        initial_contiditions(:,i) = x0;
     end
 
-    w_m = [zeros(dim_ss,1) diff(w_m,1,2)];
+
+    figure
+    hold on
+    stairs(1:simulation_hours,initial_contiditions','LineWidth',1.4);
+    ylabel('$P_G$ (pu)','interpreter','latex');
+    xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+    %legend({'Nominal','Nominal Fault'})
+    hold off
+
     
     figure
     hold on
-    p3 = plot(1:simulation_hours,nominal./mpc_initial.baseMVA,'Color',[0.8500 0.3250 0.0980],'LineWidth',1.4);
-    p1 = plot(1:simulation_hours,nominal_fault./mpc_initial.baseMVA,'Color',[0 0.4470 0.7410],'LineWidth',1.4);
+    p3 = stairs(1:simulation_hours,nominal./mpc_initial.baseMVA,'Color',[0.8500 0.3250 0.0980],'LineWidth',1.4);
+    p1 = stairs(1:simulation_hours,nominal_fault./mpc_initial.baseMVA,'Color',[0 0.4470 0.7410],'LineWidth',1.4);
     ylabel('$P_G$ (pu)','interpreter','latex');
     xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
     legend([p3(1) p1(1)],{'Nominal','Nominal Fault'})
