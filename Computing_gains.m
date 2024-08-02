@@ -1,5 +1,9 @@
-for h = 10.^(-2:1:0)
-    for R_ = 10.^(-2:1:4)
+for h = 10.^(-1:1:0)
+    disp('h:')
+    disp(h)
+    for R_ = 10.^(-2:1:3)
+        disp('R')
+        disp(R_)
         clearvars -except path h R_; close all; clc;
         debug = 2;
         
