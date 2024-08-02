@@ -1,4 +1,4 @@
-function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u)
+function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u,debug)
    
 
     delta_x = x - x0;
@@ -48,19 +48,27 @@ function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,d
             index_res = index_res + n_res;
             
         else
-            dxdt(freq_index(i)) = ( (P_mech./x_(1))  - PL(i) - Pt0(i) )./network(i).inertia;
+            dxdt(freq_index(i)) = ( (P_mech./x_(1))  - PL(i,k) - Pt0(i) )./network(i).inertia;
         end
 
 
         for j = 1:size(network(i).to_bus,1)
-
-            ang_diff = 2*pi*60*(delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(j,1))));
+            
+            if debug == 1
+                ang_diff = 2*pi*60*(delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(j,1))));
+            else
+                ang_diff = (delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(j,1))));
+            end
 
             dxdt(freq_index(i)) = dxdt(freq_index(i)) + (sin(ang_diff)/(network(i).to_bus(j,5)))/network(i).inertia;
         end
 
         % Frequency error dynamics
-        dxdt(angle_index(i)) = -delta_x(freq_index(i));
+        if debug == 1
+            dxdt(angle_index(i)) = -delta_x(freq_index(i));
+        else
+            dxdt(angle_index(i)) = -2*pi*60*delta_x(freq_index(i));
+        end
 
         
       

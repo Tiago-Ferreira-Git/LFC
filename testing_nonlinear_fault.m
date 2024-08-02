@@ -21,7 +21,7 @@ n_gen = size(mpc.gen,1);
 
 n_areas = 30;
 
-[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren);
+[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss] = get_global_ss(mpc,n_areas,flag_ren,2);
 max(A_c,[],'all')
 network_initial = network;
 % save('data/sim_118_30')
@@ -45,10 +45,9 @@ simulation_hours = ceil(simulation_seconds/3600);
 q = zeros(1,size(A,1));
 
 freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
-q(1,freq_index) = 40;
 angle_index = cumsum(bus_ss(:,2));
-q(1,angle_index) = 1;
-
+q(1,freq_index) = 40;    
+q(1,angle_index) = 0.000005;
 % q(1,freq_index(17)) = 10;
 % q(1,freq_index(25)) = 10;
 % 
@@ -60,7 +59,7 @@ q(1,angle_index) = 1;
 
 [x0,u0,Pt0,PL0,Ploss]  = initial_conditions(size(A_c,1),size(B,2),bus_ss(:,2),network,mpc);
 Pgen0 = C*x0;
-Pgen0 = Pgen0(2:4:end,1);
+Pgen0 = Pgen0(2:3:end,1);
 
  teste = Pgen0 - (PL0 + Pt0 - Ploss); 
 
@@ -116,14 +115,14 @@ y_nL_d = zeros(size(C,1),size(t_L,2));
 x_nL_d(:,1) = zeros(size(A,1),1);
 
 
-K  = LQROneStepLTI(A,B,diag(q),0.1*eye(size(B,2)),E);
-%K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
+%K  = LQROneStepLTI(A,B,diag(q),0.1*eye(size(B,2)),E);
+K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
 x_nL_d(:,1) = x0;
 k_ = 1+3600/h:3600/h:3600*simulation_hours/h + 1;
-t_fault = 600/h; %seconds
+t_fault = 1/h; %seconds
 mpc_initial = mpc;
-%mac_remove =  [18];
-mac_remove =  [];
+mac_remove =  [12];
+%mac_remove =  [];
 bus_remove = [];
 % for i = 1:3:n_areas
 %     if(size(network(i).to_bus,1) > 1)
@@ -134,7 +133,7 @@ hour = 1;
 for k = 1:length(t_L)
     k
     delta_u(:,k) = -K*(x_nL_d(:,k)-x0);
-    delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
+    %delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
 
 
     if(k == t_fault)
@@ -148,7 +147,7 @@ for k = 1:length(t_L)
     
     end 
 
-    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index,delta_u(:,k)),[0 h],x_nL_d(:,k),opts);
+    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index,delta_u(:,k),2),[0 h],x_nL_d(:,k),opts);
 
     x_nL_d(:,k+1) = x(end,:)';
     y_nL_d(:,k) = C*(x_nL_d(:,k));
@@ -241,7 +240,7 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_L,y_nL_d(1:4:end,:)','LineWidth',1.5);
+stairs(t_L,y_nL_d(1:3:end,:)','LineWidth',1.5);
 yline(1+freq_limit,'--');
 yline(1-freq_limit,'--');
 title('Discrete Nonlinear Simulation')
@@ -301,38 +300,26 @@ saveas(gca,title_,'png');
 %     xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
 % 
 % end
-
+%%
 
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_L,y_nL_d(2:4:end,:)','LineWidth',1.5);
+stairs(t_L,y_nL_d(2:3:end,:)','LineWidth',1.5);
 legend('$ P_{m_1}$','$ P_{m_2}$','$ P_{m_3}$','Interpreter','latex')
 ylabel('$ P_{m}$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
 hold off
 
 
-
-
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_L,y_nL_d(3:4:end,:)','LineWidth',1.5);
-legend('$ P_{{tie}_1}$','$ P_{{tie}_2}$','$ P_{{tie}_3}$','Interpreter','latex')
-ylabel('$ P_{tie}$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,y_nL_d(4:4:end,:)','LineWidth',1.5);
+stairs(t_L,y_nL_d(3:3:end,:)','LineWidth',1.5);
 legend('$ \delta_{1}$','$ \delta_{2}$','$ \delta_{3}$','Interpreter','latex')
 ylabel('$ \delta$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');

@@ -72,21 +72,21 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_secon
     % end
 
     t = 0:h:(size(w,2)-1)*h;
-    figure
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    hold on
-    grid on
-    box on;
-    stairs(t,w(load_mask,:)','LineWidth',1.5);
-    legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
-    ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
-    xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-    xticks(0:3600:simulation_hours*3600)
-    xticklabels(sprintfc('%d', 0:simulation_hours))
-    hold off
-    set(gcf,'renderer','Painters');
-    title='./fig/delta_p_load.png';
-    saveas(gca,title,'png');
+    % figure
+    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    % hold on
+    % grid on
+    % box on;
+    % stairs(t,w(load_mask,:)','LineWidth',1.5);
+    % legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
+    % ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
+    % xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+    % xticks(0:3600:simulation_hours*3600)
+    % xticklabels(sprintfc('%d', 0:simulation_hours))
+    % hold off
+    % set(gcf,'renderer','Painters');
+    % title='./fig/delta_p_load.png';
+    % saveas(gca,title,'png');
     
     
     if(any(ren_mask))

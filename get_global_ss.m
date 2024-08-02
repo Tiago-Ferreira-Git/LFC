@@ -1,10 +1,10 @@
-function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,network)
+function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug,network)
     
     base_mva = 100;
     ren_data = load('data\solar.mat');
     ren_data = ren_data.data;
     n_machine = size(mpc.gen,1)-length(ren_data.bus);
-    if(nargin <= 3)
+    if(nargin <= 4)
         if flag_ren
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:n_machine,1));
         else
@@ -228,7 +228,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
         %Add error integrator 
         A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
-        A(end,1) = -1;
+        if debug == 1
+            A(end,1) = -1; 
+        else
+            A(end,1) = -2*pi*60;
+        end
         B = [B; zeros(1,size(B,2))];
 
         
@@ -256,12 +260,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
 
 
-        C = zeros(4,size(A,1));
+        C = zeros(3,size(A,1));
 
         C(1,1) = 1;
         C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
         %C(3,end) = 1;
-        C(4,end) = -1*2*pi*60;
+        C(3,end) = -1;
 
         network(i).C_mech = C(2,:);
 
@@ -312,7 +316,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         E_fs(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
         for j = 1:size(neighbours,1)
-            T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
+            
+            if debug == 1
+                T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5)); 
+            else
+                T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
+            end
 
             % T_ji =  T_ji/10000;
 
@@ -331,7 +340,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             T_i =  T_i + T_ji;
 
-            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
+            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
@@ -342,7 +351,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
         
         A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
-        C_global(C_index(i),index_ss(i+1)-1) = T_i;
+        %C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end
 

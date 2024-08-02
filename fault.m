@@ -75,7 +75,7 @@ function [A,B,C,W,machine_ss,E,network,mpc,bus_ss,x] = fault(mpc,network,flag_re
     end
 
     n_areas = size(network,2);
-    [A,B,C,~,W,machine_ss,~,~,E,~,network,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,network);
+    [A,B,C,~,W,machine_ss,~,~,E,~,network,bus_ss,~] = get_global_ss(mpc,n_areas,flag_ren,2,network);
     
     [A,B,W] = discrete_dynamics(A,B,W,h);
 

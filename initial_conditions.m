@@ -38,7 +38,7 @@ function [x0,u0,Pt0,PL0,Ploss] = initial_conditions(ss_dim,n_machines,bus_ss,net
         u0(j:j+network(i).machines-1) = mpc.gen(network(i).mac_nr,2)./mpc.baseMVA;
         j = j+network(i).machines;
 
-
+        x0(angle_index(i)) =  0;
         %PL0(i) = sum(mpc.gen(network(i).mac_nr,2)./100);
 
         PL0(i) = sum(mpc.bus(network(i).bus,3)./100);
