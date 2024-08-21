@@ -1,4 +1,5 @@
 function areas = area_partitioning(lines,k,machine_buses)
+    %rng(1);
     if size(lines,1) ~= size(unique(lines(:,1:2),'rows'),1)
         %error 'Multiple Defined lines'
         lines = unique(lines,'rows');
@@ -42,8 +43,8 @@ function areas = area_partitioning(lines,k,machine_buses)
         end
         flag = false;
         j = j +1;
-        if j == 3000
-            disp('A 1000 iterations')
+        if rem(j,1000) == 0
+            j
         end
     end
 

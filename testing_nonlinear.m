@@ -5,13 +5,13 @@ opt = mpoption('verbose',0,'out.all',0);
 
 
     
+debug = 2;
 
-% 
-% 
-% flag_ren = 0;
-% flag_plot_metrics = 0;
-% 
-% 
+
+flag_ren = 0;
+flag_plot_metrics = 0;
+
+
 % [mpc,n_res,idx_initial] = get_g('case118',flag_ren);
 % idx = idx_initial;
 % mpc = runopf(mpc,opt);
@@ -21,8 +21,8 @@ opt = mpoption('verbose',0,'out.all',0);
 % [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
 % max(A_c,[],'all')
 % network_initial = network;
-% save('data/sim_118_30')
-% 
+%%%%%%%save('data/sim_118_30')
+
 
 % clear all
 % clearvars -except path; close all; clc;
@@ -35,10 +35,10 @@ load('data/sim_118_30')
 % pi/max(abs(eig(A_c)))
 
 
-h = 0.2;
+h = 0.1;
 
 simulation_hours = 0;
-simulation_seconds = 1000 + 3600*simulation_hours;
+simulation_seconds = 100 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -56,12 +56,13 @@ if debug == 1
     q(1,freq_index) = 40;    
     q(1,angle_index) = 1;
 else
-
-    q(1,freq_index) = 40;    
-    q(1,angle_index) = 0.000005;
+    
+    q(1,freq_index) = 40;
+    q(1,angle_index) = 1;
 
 end
-
+% q(1,freq_index) = 40;    
+% q(1,angle_index) = 0.00005;
 
 
 %% Initial conditions
@@ -70,14 +71,14 @@ end
 Pgen0 = C*x0;
 Pgen0 = Pgen0(2:3:end,1);
 
- teste = Pgen0 - (PL0 + Pt0 - Ploss); 
+ teste = Pgen0 - (PL0 + Pt0  ); 
 
 %% Simulation Setup
 
 
 
 t_L = 0:h:simulation_seconds;
-
+            
 w = zeros(size(W,2),size(t_L,2));
 
 [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss);
@@ -104,7 +105,7 @@ for i = 1:length(network)
     u_index(i+1) = u_index(i) + network(i).machines;
 end
 opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
-% K = lqr(A_c,B_c,diag(q),0.1*eye(size(B,2)));
+%K = lqr(A_c,B_c,diag(q),0.1*eye(size(B,2)));
 % 
 % 
 % [t_nL,x_nL] = ode45(@(t,x_nL) nonlinear_model(t,x_nL,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index), tspan,x0,opts);
@@ -116,48 +117,84 @@ opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
 
 %% Nonlinear Discrete simulation
 
+t_sh = h*50;
+t_L_obs = 0:t_sh:simulation_seconds;   
+
 x_nL_d = zeros(size(A,1),size(t_L,2));
+x_nL_d_hat = zeros(size(A,1),size(t_L_obs,2));
+
 delta_u_nld = zeros(size(B,2),size(t_L,2));
 y_nL_d = zeros(size(C,1),size(t_L,2));
-x_nL_d(:,1) = zeros(size(A,1),1);
+
 
 tic
 
-R_= 1000;
-%K  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
+R_= 0.1;
+%K = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
 
-%save(sprintf('data/K_%d.mat',R_),"K")
-load(sprintf('data/K_%d.mat',R_))
-%K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
+
+
+%load(sprintf('data/K_%.3f_%.2f.mat',R_,h));
+%R_ = 10;
+K = dlqr(A,B,diag(q),R_*eye(size(B,2)));
 K_local = zeros(size(K));
 K_local(logical(E_fs)) = K(logical(E_fs));
 K_neighbour = zeros(size(K));
 K_neighbour(~logical(E_fs)) = K(~logical(E_fs));
 %K = zeros(size(B,2),size(A,1));
 x_nL_d(:,1) = x0;
+x_nL_d_hat(:,1) = x_nL_d(:,1);
 s_h = 0.0;
-t_sh = 1;
-for k = 1:length(t_L)
+
+%%
+
+
+%Observer
+% 
+% [A_obs,B_obs,~] = discrete_dynamics(A_c,B_c,W_c,t_sh);
+% 
+% G = eye(size(A_c));
+% 
+% Q = 0.000000000000000000000000000000001*eye(size(A_c));
+% R = eye(size(C,1));
+% 
+% L = dlqe(A_obs,G,C,Q,R);
+
+for k = 1:length(t_L) 
 
     if rem(k,1000) == 0
         k
     end
 
+    % if k == 1
+    %     dist = -K_neighbour*(x_nL_d(:,k)-x0);
+    % end
 
-    s_h = s_h + h;
     if s_h >= t_sh || k == 1
-        dist = -K_neighbour*(x_nL_d(:,k)-x0);
-        s_h = 0.0;
-        %k
-    end
 
-    delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0) + dist;
+        dist = -K_neighbour*(x_nL_d(:,k)-x0);
+
+
+        s_h = 0.0;
+    end
+    s_h = s_h + h;
+    
+
+
+    delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
     delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
 
-    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index,delta_u_nld(:,k),debug,mpc.bus(:,8:9)),[0 h],x_nL_d(:,k),opts);
 
     x_nL_d(:,k+1) = x(end,:)';
     y_nL_d(:,k) = C*(x_nL_d(:,k));
+
+    
+    %x_nL_d_hat(:,k) = x_nL_d_hat(k) + L*( awgn(y_nL_d(:,k),0.000000001,'measured') - y_nL_d(:,k)  );
+    %x_nL_d_hat(:,k+1) = A_obs*x_nL_d_hat(:,k) + B_obs*delta_u_nld(:,k);
+    
+
+    
 
 end
 
@@ -176,14 +213,22 @@ end
 % 
 % %K  = LQROneStepLTI(A,B,diag(q),0.1*eye(size(B,2)),E);
 % %K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
-% 
+% s_h = 0.0;
 % for k = 1:length(t_L)-1
 % 
 % 
+%     %k
+%     s_h = s_h + h;
+%     if s_h >= t_sh || k == 1
+%         dist = -K_neighbour*(x_L(:,k));
+%         s_h = 0.0;
+%         %k
+%     end
 % 
 % 
-%     delta_u(:,k) = -K*x_L(:,k);
-%     delta_u(:,k) = min(max(delta_u(:,k),-0.1),0.1);
+%     %delta_u(:,k) = -K*x_L(:,k);
+%     delta_u(:,k) = -K_local*(x_L(:,k)) + dist;
+%     delta_u(:,k) = min(max(delta_u(:,k),-6),6);
 % 
 % 
 %     x_L(:,k+1) = A*x_L(:,k) + B*delta_u(:,k)+ W*w(:,k);
@@ -199,6 +244,8 @@ freq_limit = 0.05/50;
 
 %load('fig/Nonlinear_discrete/sims')
 
+
+
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
@@ -212,8 +259,24 @@ ylabel('$\omega$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
 title=sprintf('./fig/f_%f.png',t_sh);
 saveas(gca,title,'png');
+savefig(sprintf('./fig/f_%f.fig',t_sh));
 hold off
 
+toc
+% y_nL_d_hat = C*x_nL_d_hat;
+% figure
+% set(gca,'TickLabelInterpreter','latex') % Latex style axis
+% hold on
+% grid on
+% box on;
+% stairs(t_L_obs,y_nL_d_hat(1:3:end,1:end-1)','LineWidth',1.5);
+% yline(1+freq_limit,'--');
+% yline(1-freq_limit,'--');
+% 
+% ylabel('$\omega$ (pu)','interpreter','latex');
+% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+hold off
+%%
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
@@ -226,7 +289,7 @@ xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
 % saveas(gca,title,'png');
 hold off
 
-%%
+
 figure
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
@@ -238,6 +301,20 @@ xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
 % title=sprintf('./fig/f_%f.png',t_sh);
 % saveas(gca,title,'png');
 hold off
+
+%%
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+stairs(t_L,delta_u_nld','LineWidth',1.5);
+ylabel('$u$ (pu)','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% title=sprintf('./fig/f_%f.png',t_sh);
+% saveas(gca,title,'png');
+hold off
+
 
 
 
@@ -355,41 +432,53 @@ hold off
 
 % Keep workspace tidy
 
-clearvars -except A A_c B B_c C C_mech E E_fs K mpc network P_load P_res Pgen0 Pl0 Ploss Pt0 h
+clearvars -except A A_c B B_c C C_mech E E_fs K mpc network P_load P_res Pgen0 Pl0 Ploss Pt0 h W_c L  A_obs
 
-% h = 0.02;
-% C_ = eye(size(A,1));
-% C_ = C;
-% sys = ss(A_c,B_c,C_,zeros(size(C_,1),size(B,2)));
+% G = eye(size(A_c));
+% C_area = [];
+% for k = 1:size(network,2)
 % 
-% sys_d = ss(A,B,C_,zeros(size(C_,1),size(B,2)),h);
-% 
-% 
-% figure('Position',4*[0 0 144 132])
-% pzmap(sys)
-% saveas(gca,'./fig/pzmap_continuous_open_loop.png','png');
-% savefig('./fig/pzmap_continuous_open_loop.fig');
+%     C_area = [C_area zeros(size(C_area,1),1) ;  zeros(1,size(C_area,2)) 1]; 
+%     for i = 1:network(k).machines
+%         C_area = [C_area zeros(size(C_area,1),3) ; zeros(1,size(C_area,2)) [1 1.25 0]];
+%     end
+%     C_area = [C_area zeros(size(C_area,1),1) ; zeros(1,size(C_area,2)) -1];
 % 
 % 
-% figure('Position',4*[0 0 144 132])
-% pzmap(sys_d)
-% saveas(gca,'./fig/pzmap_discrete_open_loop.png','png');
-% savefig('./fig/pzmap_discrete_open_loop.fig');
-% 
-% feedback_ss_discrete = ss(A-B*K,zeros(size(A_c,1),1),C_,zeros(size(C_,1),1),h);
-% figure('Position',4*[0 0 144 132])
-% pzmap(feedback_ss_discrete)
-% saveas(gca,'./fig/pzmap_discrete_closed_loop.png','png');
-% savefig('./fig/pzmap_discrete_closed_loop.fig');
-% 
-% feedback_ss_continuous = d2c(feedback_ss_discrete);
-% figure('Position',4*[0 0 144 132])
-% pzmap(feedback_ss_continuous)
-% saveas(gca,'./fig/pzmap_continu_closed_loop.png','png');
-% savefig('./fig/pzmap_continuous_closed_loop.fig');
+% end
 % 
 % 
+% 
+% Q = 0.0000000000000000000000000001*eye(size(A_c));
+% R = eye(size(C_area,1));
+% 
+% L = dlqe(A_obs,G,C_area,Q,R);
+% 
+% 
+% eigen_controller = eig(A-B*K);
+% eigen_controller = log(eigen_controller)/h;
+% 
+% eigen_observer = eig(A_obs-L*C_area);
+% eigen_observer = log(eigen_observer)/h;
+% 
+% 
+% figure
+% 
+% 
+% 
+% figure
+% hold on
+% plot(real(eigen_controller),imag(eigen_controller),"x")
+% plot(real(eigen_observer),imag(eigen_observer),"x")
+% axis equal
+% grid on
+% xlabel("Re(z)")
+% ylabel("Im(z)")
+% %plot(real(eigen_cont),imag(eigen_cont),"x")
+% %title(sprintf('Centralized , R = %.3f',R_))
+% %legend({'Decentralized','Centralized'},'Location','best')
 
-% s = tf('s');
-% G = C*inv(s.*eye(size(A)) - A )*B;
+
+
+
 

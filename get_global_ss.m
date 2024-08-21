@@ -227,6 +227,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         end
 
         %Add error integrator 
+
+        %unique_lines = unique(network(i).to_bus,'rows');
+        %mask = bitor(ismember(network(i).bus,unique_lines(:,2),'rows'),ismember(network(i).bus,unique_lines(:,3),'rows'));
+        
+
+
         A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
         if debug == 1
             A(end,1) = -1; 
