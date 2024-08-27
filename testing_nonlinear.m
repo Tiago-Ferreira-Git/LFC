@@ -12,22 +12,22 @@ flag_ren = 0;
 flag_plot_metrics = 0;
 
 
-% [mpc,n_res,idx_initial] = get_g('case118',flag_ren);
-% idx = idx_initial;
-% mpc = runopf(mpc,opt);
-% clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
-% 
-% n_areas = 30;
-% [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
-% max(A_c,[],'all')
-% network_initial = network;
-%%%%%%%save('data/sim_118_30')
+[mpc,n_res,idx_initial] = get_g('case118',flag_ren);
+idx = idx_initial;
+mpc = runopf(mpc,opt);
+clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
+
+n_areas = 30;
+[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
+max(A_c,[],'all')
+network_initial = network;
+%%%%%%save('data/sim_118_30')
 
 
 % clear all
 % clearvars -except path; close all; clc;
 
-load('data/sim_118_30')
+% load('data/sim_118_30')
 % load('data/sim_14_3')
 % disp('Sampling time should be:')
 % pi/abs(min(real(eig(A_c))))
@@ -38,7 +38,7 @@ load('data/sim_118_30')
 h = 0.1;
 
 simulation_hours = 0;
-simulation_seconds = 100 + 3600*simulation_hours;
+simulation_seconds = 300 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -58,11 +58,9 @@ if debug == 1
 else
     
     q(1,freq_index) = 40;
-    q(1,angle_index) = 1;
+    q(1,angle_index) = 0.05;
 
 end
-% q(1,freq_index) = 40;    
-% q(1,angle_index) = 0.00005;
 
 
 %% Initial conditions
@@ -117,7 +115,7 @@ opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
 
 %% Nonlinear Discrete simulation
 
-t_sh = h*50;
+t_sh = h*100;
 t_L_obs = 0:t_sh:simulation_seconds;   
 
 x_nL_d = zeros(size(A,1),size(t_L,2));
@@ -129,7 +127,7 @@ y_nL_d = zeros(size(C,1),size(t_L,2));
 
 tic
 
-R_= 0.1;
+R_= 100;
 %K = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
 
 

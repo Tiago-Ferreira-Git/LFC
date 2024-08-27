@@ -321,12 +321,13 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         E_fs(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
+        z_mod = vecnorm(network(i).to_bus(:,4:5),2,2);
         for j = 1:size(neighbours,1)
             
             if debug == 1
-                T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5)); 
+                T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(z_mod(j)); 
             else
-                T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
+                T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(z_mod(j));
             end
 
             % T_ji =  T_ji/10000;
