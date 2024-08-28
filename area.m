@@ -18,6 +18,8 @@ classdef area
         res_bus
         res_nr
         res
+        A_mech
+        B_mech
         A
         B
         C
@@ -25,6 +27,9 @@ classdef area
         C_res
         W_res
         W
+        L
+        freq_index 
+        K
     end
 
     methods

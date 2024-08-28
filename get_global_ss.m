@@ -178,8 +178,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     
 
         % Non-linear Simulation
-        network(i).A = A_area;
-        network(i).B = B_area;
+        network(i).A_mech = A_area;
+        network(i).B_mech = B_area;
         
 
         
@@ -277,7 +277,14 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
         network(i).W = W;
         
-        
+        network(i).C = zeros(2+network(i).machines+n_ren,size(A,1));
+
+        network(i).A = A;
+        network(i).B = B;
+        network(i).C(1,1) = 1;
+        network(i).C(2:end-1-n_ren,2:end-1-n_ren) = C_mac_area;
+        network(i).C(end,end) = -1;
+
         
 
         bus_ss = [bus_ss; i size(A,1) size(network(i).tg_con,1) n_ren];
@@ -312,7 +319,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     index_ss = [1 ; index_ss];
     C_index = 3:4:size(C_global,1);
     tg_size = cumsum([ 1 ; bus_ss(:,3)]);
-    %tg_size = [1 ; tg_size];
+    
+
+
     for i = 1:size(network,2)
 
 
@@ -324,6 +333,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         z_mod = vecnorm(network(i).to_bus(:,4:5),2,2);
         for j = 1:size(neighbours,1)
             
+            % Global Matrix A 
+
             if debug == 1
                 T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(z_mod(j)); 
             else
@@ -346,21 +357,69 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             L(1+tg_size(i):tg_size(i)+network(i).machines,neighbours(j,1)) = 1;
 
             T_i =  T_i + T_ji;
-
-            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
+        A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
+
+
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
         end
         L(1+sum(bus_ss(1:i-1,3)):sum(bus_ss(1:i-1,3))+network(i).machines,i) = 1;
         
-        %Default
-        %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
         
-        A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
-        %C_global(C_index(i),index_ss(i+1)-1) = T_i;
+
+
+
+        areas = unique(neighbours(:,1));
+        n = size(network(i).A,1);
+        network(i).freq_index = [1 1+ n];
+        for j = 1:size(areas,1)
+            mask = neighbours(:,1) == areas(j);
+            % Local Matrix A 
+
+            if debug == 1
+                T_ji = sum(2*pi*60*cos(bus_sol(neighbours(mask,3)) - bus_sol(neighbours(mask,2)))./(z_mod(mask))); 
+            else
+                T_ji = sum(cos(bus_sol(neighbours(mask,3)) - bus_sol(neighbours(mask,2)))./(z_mod(mask)));
+            end
+            
+            network(i).C = [network(i).C zeros(size(network(i).C,1),size(network(areas(j)).A,1)); zeros(size(network(areas(j)).C,1),size(network(i).A,2)) network(areas(j)).C];
+            network(i).C_mech = [network(i).C_mech zeros(size(network(i).C_mech,1),size(network(areas(j)).A,1)); zeros(size(network(areas(j)).C_mech,1),size(network(i).A,2)) network(areas(j)).C_mech];
+            
+
+            network(i).A = [network(i).A zeros(size(network(i).A,1),size(network(areas(j)).A,1)) ; zeros(size(network(areas(j)).A,1),size(network(i).A,1)) network(areas(j)).A];
+            network(i).A(1,end) = -T_ji/network(i).inertia;
+
+
+            %Neighbour
+            network(i).A(n+1,1) = -T_ji/network(areas(j)).inertia;
+            network(i).A(n+1,end) = T_ji/network(areas(j)).inertia;
+            T_i =  T_i + T_ji;
+
+
+            network(i).B = [network(i).B zeros(size(network(i).B,1),size(network(areas(j)).B,2)) ; zeros(size(network(areas(j)).B,1),size(network(i).B,2)) network(areas(j)).B];
+            network(i).freq_index = [network(i).freq_index network(i).freq_index(end)+ size(network(areas(j)).A,1)];
+        end
+
+        network(i).A(1,n) = T_i/network(i).inertia;
+        [network(i).A,network(i).B] = discrete_dynamics(network(i).A,network(i).B,zeros(size(network(i).A,1),1),0.1);
+
+        network(i).C = eye(size(network(i).A));
+        
+        G = eye(size(network(i).A));
+    
+    
+        Q = eye(size(network(i).A));
+        R = 10*eye(size(network(i).C,1));
+    
+        network(i).L = dlqe(network(i).A,G,network(i).C,Q,R);
+
+
 
     end
+    
+    
+
 
    
 
@@ -387,7 +446,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     % C_global = C_global*S; 
 
 
-    
+    E = logical(E);
+    E_fs = logical(E);
 
 
 end

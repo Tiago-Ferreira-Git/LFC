@@ -144,47 +144,73 @@ x_nL_d(:,1) = x0;
 x_nL_d_hat(:,1) = x_nL_d(:,1);
 s_h = 0.0;
 
-%%
+t_obs = 0:h:t_sh; 
+t_index = 1;
 
+if floor(t_sh/h) ~= ceil(t_sh/h)
+    error 't_sh is not a multiple of h'
+end
 
-%Observer
-% 
-% [A_obs,B_obs,~] = discrete_dynamics(A_c,B_c,W_c,t_sh);
-% 
-% G = eye(size(A_c));
-% 
-% Q = 0.000000000000000000000000000000001*eye(size(A_c));
-% R = eye(size(C,1));
-% 
-% L = dlqe(A_obs,G,C,Q,R);
+jump = t_sh/h;
 
-for k = 1:length(t_L) 
+for i = 1:length(network) 
+    areas = unique(network(i).to_bus(:,1));
+    areas = [i ; areas];
+    area_index = freq_index(i):freq_index(i+1)-1;
 
-    if rem(k,1000) == 0
-        k
+    K_area = zeros(size(network(i).B,2),size(network(i).A,1));
+    k = 1;
+    for j=1:length(areas)
+
+        K_middle = zeros(size(k:k+network(areas(j)).machines-1,2),size(network(i).freq_index(j):network(i).freq_index(j+1)-1,2));
+        K_middle = K(E(u_index(areas(j)):u_index(areas(j)+1),freq_index(areas(j)):freq_index(areas(j)+1)-1));
+        K_area(k:k+network(areas(j)).machines-1,network(i).freq_index(j):network(i).freq_index(j+1)-1) = K_middle;
+        k = k+ network(areas(j)).machines;
     end
-
-    % if k == 1
-    %     dist = -K_neighbour*(x_nL_d(:,k)-x0);
-    % end
-
-    if s_h >= t_sh || k == 1
-
-        dist = -K_neighbour*(x_nL_d(:,k)-x0);
-
-
-        s_h = 0.0;
-    end
-    s_h = s_h + h;
     
+    
+end
+
+for k = 1:t_sh:simulation_seconds
+    % 
+    % delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
+    % delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
+    
+    for i = 1:length(network) 
+        areas = unique(network(i).to_bus(:,1));
+        areas = [i ; areas];
+
+        
+        area_index = freq_index(i):freq_index(i+1)-1;
 
 
-    delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
-    delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
+        n_res = network(i).res;
+        x_mec_index = 2:network(i).machines*3+1;
+        ptie_dist = zeros(1,length(areas));
+        for j=1:length(areas)
+            x_mec_index = [x_mec_index x_mec_index(end)+n_res+1+1+1+(1:network(i).machines*3+1)];
 
-    [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index,delta_u_nld(:,k),debug,mpc.bus(:,8:9)),[0 h],x_nL_d(:,k),opts);
+            if j ~= 1
+                ptie = A(freq_index(areas(j)),:);
+                ptie(1,freq_index(areas(j)):freq_index(areas(j)+1)-2) = 0;
+                ptie_dist(i)  = ptie*x_nL_d(:,k);
+            end
 
-    x_nL_d(:,k+1) = x(end,:)';
+        end
+
+        x_area = x_nL_d(E(u_index(areas(1)),:),t_index);
+        x0_area = x0(E(u_index(areas(1)),:));
+
+
+        if ~isempty(P_res)
+            [~,x] = ode45(@(t,x) nonlinear_model(t,x,x0_area,x_mec_index,network(i),areas,mpc.bus(:,8:9),ptie_dist,network,P_load(areas,:),P_res(areas,:)),t_obs,x_area,opts);
+        else
+            [~,x] = ode45(@(t,x) nonlinear_model(t,x,x0_area,x_mec_index,network(i),areas,mpc.bus(:,8:9),ptie_dist,network,P_load(areas,:),[]),t_obs,x_area,opts);
+        end
+        x_nL_d(area_index,t_index:t_index+jump) = x(end,:)';
+    end
+    
+    t_index = t_index+jump;
     y_nL_d(:,k) = C*(x_nL_d(:,k));
 
     
@@ -432,25 +458,7 @@ hold off
 
 clearvars -except A A_c B B_c C C_mech E E_fs K mpc network P_load P_res Pgen0 Pl0 Ploss Pt0 h W_c L  A_obs
 
-% G = eye(size(A_c));
-% C_area = [];
-% for k = 1:size(network,2)
-% 
-%     C_area = [C_area zeros(size(C_area,1),1) ;  zeros(1,size(C_area,2)) 1]; 
-%     for i = 1:network(k).machines
-%         C_area = [C_area zeros(size(C_area,1),3) ; zeros(1,size(C_area,2)) [1 1.25 0]];
-%     end
-%     C_area = [C_area zeros(size(C_area,1),1) ; zeros(1,size(C_area,2)) -1];
-% 
-% 
-% end
-% 
-% 
-% 
-% Q = 0.0000000000000000000000000001*eye(size(A_c));
-% R = eye(size(C_area,1));
-% 
-% L = dlqe(A_obs,G,C_area,Q,R);
+
 % 
 % 
 % eigen_controller = eig(A-B*K);
