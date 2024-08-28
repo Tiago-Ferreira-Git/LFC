@@ -124,10 +124,55 @@ y_nL_d = zeros(size(C,1),size(t_L,2));
 x_nL_d(:,1) = zeros(size(A,1),1);
 
 t_sh = 1*h;
-
-    R_ = 100000;
-    int_value = 0.00005;
 tic
+
+
+
+
+
+
+E_so = zeros(size(E));
+
+index_ss = cumsum(bus_ss(:,2))+1;
+index_ss = [1 ; index_ss];
+tg_size = cumsum([ 1 ; bus_ss(:,3)]);
+
+for i = 1:size(network,2)
+
+
+    neighbours = network(i).to_bus;
+
+    E_so(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
+    
+    to_bus = [];
+    unique_areas = unique(network(i).to_bus(:,1),'rows');
+
+
+    for j = unique_areas'
+        neighbours = [neighbours ; network(j).to_bus];
+    end
+
+    for j = 1:size(neighbours,1)
+        E_so(tg_size(i):tg_size(i+1)-1,index_ss(neighbours(j,1)):index_ss(neighbours(j,1)+1)-1) = ones(bus_ss(i,3),bus_ss(neighbours(j,1),2));
+    end
+
+
+end
+
+
+
+E_so
+
+
+
+
+
+
+
+
+
+
+
 
 %R_= 1000*10000;
 myDir = pwd; %gets directory
