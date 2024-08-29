@@ -37,8 +37,8 @@ load('data/sim_118_30')
 
 h = 0.1;
 
-simulation_hours = 0;
-simulation_seconds = 1000 + 3600*simulation_hours;
+simulation_hours = 5;
+simulation_seconds = 0 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -127,10 +127,6 @@ t_sh = 1*h;
 tic
 
 
-
-
-
-
 E_so = zeros(size(E));
 
 index_ss = cumsum(bus_ss(:,2))+1;
@@ -161,18 +157,7 @@ end
 
 
 
-E_so
-
-
-
-
-
-
-
-
-
-
-
+E_so;
 
 %R_= 1000*10000;
 myDir = pwd; %gets directory
@@ -184,6 +169,12 @@ for j = 1:length(myFiles)
     baseFileName = myFiles(j).name;
     %baseFileName = 'K_1000.000_0.10_angle_1000.000000.mat';
     %baseFileName = 'K_10.000_0.10_angle_0.100000.mat'
+
+    %Este é o lento
+    %baseFileName = 'K_1000000.000_0.10.mat';  %omega_R_1e+06_Angle_5e-05_t_{sh}_0.10_freq_40.00
+
+   
+
     nome = split(baseFileName,'_');
     if length(nome) == 5
         freq_value = 4;    
