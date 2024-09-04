@@ -9,10 +9,6 @@ function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,d
     end
 
 
-
-    k = find(t >= 0:3600:24*3600);
-    k = k(1);
-
     dxdt = zeros(size(x0));
 
     angle_index = cumsum(bus_ss(:,2));
@@ -41,14 +37,16 @@ function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,d
         % Frequency dynamics 
         if n_res ~= 0
             P_res = network(i).C_res*x_;
-            dxdt(freq_index(i)) = (P_mech./x_(1) + P_res - PL(i,k) - Pt0(i))./network(i).inertia;
+
+            error 'P_res(i,k)?' 
+            dxdt(freq_index(i)) = (P_mech./x_(1) + P_res - PL(i) - Pt0(i))./network(i).inertia;
 
 
             dxdt(freq_index(i+1)-n_res:freq_index(i+1)-1) = network(i).W_res*Pres(index_res:index_res+n_res-1,k);
             index_res = index_res + n_res;
             
         else
-            dxdt(freq_index(i)) = ( (P_mech./x_(1))  - PL(i,k) - Pt0(i) )./network(i).inertia;
+            dxdt(freq_index(i)) = ( (P_mech./x_(1))  - PL(i) - Pt0(i) )./network(i).inertia;
         end
 
 

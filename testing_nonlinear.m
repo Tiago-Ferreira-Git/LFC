@@ -37,8 +37,8 @@ load('data/sim_118_30')
 
 h = 0.1;
 
-simulation_hours = 5;
-simulation_seconds = 0 + 3600*simulation_hours;
+simulation_hours = 0;
+simulation_seconds = 400 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -87,13 +87,14 @@ w = zeros(size(W,2),size(t_L,2));
 P_res = x0(ren_ss,1) + w_ren;
 P_load = PL0 + w_load;
 
-
-P_res = P_res(:,1:3600/h:end);
-P_load = P_load(:,1:3600/h:end);
+% 
+% P_res = P_res(:,1:3600/h:end);
+% P_load = P_load(:,1:3600/h:end);
 
 
 
 %% Nonlinear Simulation
+
 
 
 
@@ -161,19 +162,25 @@ E_so;
 
 %R_= 1000*10000;
 myDir = pwd; %gets directory
-myFiles = dir(fullfile(myDir,'data','*.mat')); %gets all wav files in struct
+myFiles = dir(fullfile(myDir,'data/first_order','*.mat')); %gets all wav files in struct
 
 plotting = zeros(length(myFiles),4);
 
 for j = 1:length(myFiles)
     baseFileName = myFiles(j).name;
-    %baseFileName = 'K_1000.000_0.10_angle_1000.000000.mat';
+    %baseFileName = 'K_1.000_0.10.mat';
     %baseFileName = 'K_10.000_0.10_angle_0.100000.mat'
+    %baseFileName = 'K_1000000.000_0.10.mat';
 
     %Este é o lento
-    %baseFileName = 'K_1000000.000_0.10.mat';  %omega_R_1e+06_Angle_5e-05_t_{sh}_0.10_freq_40.00
+    baseFileName = 'K_1000000.000_0.10.mat';  %omega_R_1e+06_Angle_5e-05_t_{sh}_0.10_freq_40.00
 
    
+    %baseFileName = 'K_10000000.000_0.10_q_0.00050.mat';
+
+
+    %baseFileName = 'K_100000.000_0.10_angle_100.000000.mat';
+    %baseFileName = 'K_10.000_0.10_angle_0.100000.mat';
 
     nome = split(baseFileName,'_');
     if length(nome) == 5
@@ -205,7 +212,7 @@ for j = 1:length(myFiles)
     
 
     %load(sprintf('data/K_%.3f_%.2f.mat',R_,h));
-    load(fullfile('data',baseFileName));
+    load(fullfile('data/first_order',baseFileName));
 
     %K  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E);
     %K = dlqr(A,B,diag(q),10*eye(size(B,2)));
@@ -234,8 +241,15 @@ for j = 1:length(myFiles)
     
     
         delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
+        
+        %delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-1),1);
         delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load,P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+
+        if isempty(P_res)
+            [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+        else
+            [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+        end
     
         x_nL_d(:,k+1) = x(end,:)';
         y_nL_d(:,k) = C*(x_nL_d(:,k));
@@ -267,11 +281,11 @@ for j = 1:length(myFiles)
     yline(1+freq_limit,'--');
     yline(1-freq_limit,'--');
     title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
+    ylabel('$\omega$ (pu)','interpreter','latex');
+    xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
     savefig(sprintf('./fig/omega_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.fig',R_,int_value,t_sh,freq_value));
     set(gcf,'renderer','Painters');
     saveas(gca,sprintf('./fig/omega_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.png',R_,int_value,t_sh,freq_value),'png');
-    ylabel('$\omega$ (pu)','interpreter','latex');
-    xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
     hold off
 
     figure
