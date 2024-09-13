@@ -48,28 +48,54 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_secon
         if ~isempty(find(k == k_, 1))
             hour = find(k == k_);
         end
-        w(load_mask,k) = w_load_hour(:,hour).*100;
+        w(load_mask,k) = w_load_hour(:,hour);
         w(ren_mask,k) = w_ren_hour(:,hour);
         
 
         %w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
         %w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
     end
-    
-    w_load = w(load_mask,:);
-    w_ren = w(ren_mask,:);
-    
 
-    
+    t = 0:h:(size(w,2)-1)*h;
+    figure
+    set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    hold on
+    grid on
+    box on;
+    stairs(t,w(load_mask,:)','LineWidth',1.5);
+    legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
+    ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
+    xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+    xticks(0:3600:simulation_hours*3600)
+    xticklabels(sprintfc('%d', 0:simulation_hours))
+    hold off
+    set(gcf,'renderer','Painters');
+    title='./fig/delta_p_load.png';
+    saveas(gca,title,'png');
     
     for i = 1:size(w,1)
 
-        freq_pole = 0.00001;
-        a = [1 -exp(-h*freq_pole)];
-        b = 1-exp(-h*freq_pole);
+        %Low Pass filter
+        % freq_pole = 0.003;
+        % a = [1 -exp(-h*freq_pole)];
+        % b = freq_pole*h;
+        % %-exp(-h*freq_pole);
+        % w(i,:) = filter(b,a,w(i,:));
+
+
+
+        windowSize = 3600/(h*2); 
+        b = (1/windowSize)*ones(1,windowSize);
+        a = 1;
         w(i,:) = filter(b,a,w(i,:));
 
+
+
     end
+
+    w_load = w(load_mask,:);
+    w_ren = w(ren_mask,:);
+    
 
     t = 0:h:(size(w,2)-1)*h;
     figure
