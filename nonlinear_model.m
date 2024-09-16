@@ -22,7 +22,7 @@ function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,d
     for i = 1:length(network)
         n_res = network(i).res;
         freq_feedback = zeros(size(network(i).A,1),1);
-        freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+        freq_feedback(3:3:end) = -network(i).freq_feedback;
         area_index = freq_index(i):freq_index(i+1)-1;
         x_ = x(area_index);
 

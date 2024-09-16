@@ -48,6 +48,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
                         network(j).mac_nr = [network(j).mac_nr ; find(mpc.mac_con(:,2) == i)];
 
 
+                        network(j).freq_feedback = [network(j).freq_feedback; mpc.tg_con(mpc.mac_con(mask,1),4)];
+
+
                         break
                     end
                 end
@@ -135,6 +138,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         C_area = [];
         C_mac_area = [];
         
+       
 
         n_ren = 0;
         for j = 1:size(network(i).tg_con,1)
@@ -168,6 +172,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
                 machine_ss = [machine_ss ; (n:n+3-1)' ones(3,1).*n_machines];
             end
             
+            network(i).freq_feedback(j) = network(i).freq_feedback(j)/c;
            
             A_area = [A_area zeros(size(A_area,1),size(A_mech,2)) ; zeros(size(A_mech,1),size(A_area,2)) A_mech];
             B_area = [B_area zeros(size(B_area,1),size(B_mech,2)) ; zeros(size(B_mech,1),size(B_area,2)) B_mech];
@@ -189,7 +194,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B_freq = 1/network(i).inertia;
         
         freq_feedback = zeros(size(B_area,1),1);
-        freq_feedback(3:3:end) = -network(i).tg_con(:,4);
+        freq_feedback(3:3:end) = -network(i).freq_feedback;
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
 

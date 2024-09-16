@@ -25,6 +25,7 @@ classdef area
         C_res
         W_res
         W
+        freq_feedback
     end
 
     methods
@@ -53,6 +54,7 @@ classdef area
             obj.res_nr = [];
             obj.res_bus = [];
             obj.res = 0;
+            obj.freq_feedback = [];
             
         end
     end

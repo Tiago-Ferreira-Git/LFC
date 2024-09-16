@@ -48,7 +48,7 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_secon
         if ~isempty(find(k == k_, 1))
             hour = find(k == k_);
         end
-        w(load_mask,k) = w_load_hour(:,hour);
+        w(load_mask,k) = w_load_hour(:,hour)*100;
         w(ren_mask,k) = w_ren_hour(:,hour);
         
 
@@ -73,25 +73,25 @@ function [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_secon
     title='./fig/delta_p_load.png';
     saveas(gca,title,'png');
     
-    for i = 1:size(w,1)
-
-        %Low Pass filter
-        % freq_pole = 0.003;
-        % a = [1 -exp(-h*freq_pole)];
-        % b = freq_pole*h;
-        % %-exp(-h*freq_pole);
-        % w(i,:) = filter(b,a,w(i,:));
-
-
-
-        windowSize = 3600/(h*2); 
-        b = (1/windowSize)*ones(1,windowSize);
-        a = 1;
-        w(i,:) = filter(b,a,w(i,:));
-
-
-
-    end
+    % for i = 1:size(w,1)
+    % 
+    %     %Low Pass filter
+    %     % freq_pole = 0.003;
+    %     % a = [1 -exp(-h*freq_pole)];
+    %     % b = freq_pole*h;
+    %     % %-exp(-h*freq_pole);
+    %     % w(i,:) = filter(b,a,w(i,:));
+    % 
+    % 
+    % 
+    %     windowSize = 3600/(h*2); 
+    %     b = (1/windowSize)*ones(1,windowSize);
+    %     a = 1;
+    %     w(i,:) = filter(b,a,w(i,:));
+    % 
+    % 
+    % 
+    % end
 
     w_load = w(load_mask,:);
     w_ren = w(ren_mask,:);
