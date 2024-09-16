@@ -97,147 +97,146 @@ x_nL_d(:,1) = zeros(size(A,1),1);
 t_sh = 100*h;
 tic
 
+for int_value = 10.^(-2:1:2)
+    for R_ = 10.^(-2:1:2)
 
-
-% Controller gain synthesis 
-q = zeros(1,size(A,1));
-
-freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
-angle_index = cumsum(bus_ss(:,2));
-
-q(1,freq_index) = 10; 
-q(1,angle_index) = 0.1;
-
-
-meas = zeros(3,length(t_L));
-
-x_nL_d = zeros(size(A,1),size(t_L,2));
-
-delta_u_nld = zeros(size(B,2),size(t_L,2));
-y_nL_d = zeros(size(C,1),size(t_L,2));
-
-x_nL_d(:,1) = x0;
-s_h = 0.0;
-
-y_increment = C*(x_nL_d(:,1)-x0);
-
-
-R_= 100;
-
-tic
-[K,~,trace_records]  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E,NaN);
-toc
-%[K,E_fs] = slow_ss(mpc,debug,network,h);
-
-
-K_local = zeros(size(K));
-K_local(logical(E_fs)) = K(logical(E_fs));
-K_neighbour = zeros(size(K));
-K_neighbour(~logical(E_fs)) = K(~logical(E_fs));
-
-
-y_feedback = zeros(2*n_areas,1);
-for k = 1:length(t_L) 
-    
-    % y_feedback(1:2:end) = y_increment(1:3:end);
-    % y_feedback(2:2:end) = -y_increment(3:3:end);
-
-    if rem(k,1000) == 0
-        k
-    end
-
-    if s_h >= t_sh || k == 1        
-        %dist = -K_neighbour*y_feedback;
-        %dist = -K_neighbour*y_feedback;
-        dist = -K_neighbour*(x_nL_d(:,k)-x0);
+        % Controller gain synthesis 
+        q = zeros(1,size(A,1));
+        
+        freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
+        angle_index = cumsum(bus_ss(:,2));
+        
+        q(1,freq_index) = 10; 
+        q(1,angle_index) = int_value;
+        
+        
+        meas = zeros(3,length(t_L));
+        
+        x_nL_d = zeros(size(A,1),size(t_L,2));
+        
+        delta_u_nld = zeros(size(B,2),size(t_L,2));
+        y_nL_d = zeros(size(C,1),size(t_L,2));
+        
+        x_nL_d(:,1) = x0;
         s_h = 0.0;
+        
+        y_increment = C*(x_nL_d(:,1)-x0);
+        
+        tic
+        [K,~,trace_records]  = LQROneStepLTI(A,B,diag(q),R_*eye(size(B,2)),E,NaN);
+        save(sprintf('data/testing/K_%.3f_%.2f_%.6f.mat',R_,h,int_value),"K");
+        toc
+        %[K,E_fs] = slow_ss(mpc,debug,network,h);
+        
+        
+        K_local = zeros(size(K));
+        K_local(logical(E_fs)) = K(logical(E_fs));
+        K_neighbour = zeros(size(K));
+        K_neighbour(~logical(E_fs)) = K(~logical(E_fs));
+        
+        
+        y_feedback = zeros(2*n_areas,1);
+        for k = 1:length(t_L) 
+            
+            % y_feedback(1:2:end) = y_increment(1:3:end);
+            % y_feedback(2:2:end) = -y_increment(3:3:end);
+        
+            if rem(k,1000) == 0
+                k
+            end
+        
+            if s_h >= t_sh || k == 1        
+                %dist = -K_neighbour*y_feedback;
+                %dist = -K_neighbour*y_feedback;
+                dist = -K_neighbour*(x_nL_d(:,k)-x0);
+                s_h = 0.0;
+            end
+            s_h = s_h + h;
+        
+        
+        
+            %delta_u_nld(:,k) = -K_local*y_feedback+dist;
+        
+            delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
+            
+            %delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-1),1);
+            delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
+        
+            if isempty(P_res)
+                [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+            else
+                [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+            end
+        
+            x_nL_d(:,k+1) = x(end,:)';
+            y_nL_d(:,k) = C*(x_nL_d(:,k));
+            y_increment = C*(x_nL_d(:,k+1)-x0);
+        
+            % q(angle_index) = 0;
+            % q(freq_index) = freq_value;
+            % meas(1,k) = x_nL_d(:,k)'*diag(q)*x_nL_d(:,k);
+            % q(angle_index) = int_value;
+            % q(freq_index) = 0;
+            % meas(2,k) = x_nL_d(:,k)'*diag(q)*x_nL_d(:,k);
+            % meas(3,k) = delta_u_nld(:,k)'*R_*eye(size(B,2))*delta_u_nld(:,k);
+        end
+        
+        % plotting(j,1) = R_;
+        % plotting(j,2) = freq_value;
+        % plotting(j,3) = int_value;
+        % plotting(j,4) = max(delta_u_nld,[],'all');
+        
+        
+        
+        freq_limit = 0.05/50;
+        figure
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        hold on
+        grid on
+        box on;
+        stairs(t_L,y_nL_d(1:3:end,:)','LineWidth',1.5);
+        yline(1+freq_limit,'--');
+        yline(1-freq_limit,'--');
+        title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
+        ylabel('$\omega$ (pu)','interpreter','latex');
+        xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+        %savefig(sprintf('./fig/omega_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.fig',R_,int_value,t_sh,freq_value));
+        set(gcf,'renderer','Painters');
+        %saveas(gca,sprintf('./fig/omega_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.png',R_,int_value,t_sh,freq_value),'png');
+        hold off
+        
+        figure
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        hold on
+        grid on
+        box on;
+        stairs(t_L,y_nL_d(2:3:end,:)','LineWidth',1.5);
+        
+        figure
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        hold on
+        grid on
+        box on;
+        stairs(t_L,y_nL_d(3:3:end,:)','LineWidth',1.5);
+        
+        
+        
+        
+        figure
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        hold on
+        grid on
+        box on;
+        stairs(t_L,delta_u_nld','LineWidth',1.5);
+        ylabel('$\Delta u$ (pu)','interpreter','latex');
+        xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+        title(sprintf(' t_{sh} = %.2f',t_sh),'Interpreter','tex')
+        %savefig(sprintf('./fig/delta_u_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.fig',R_,int_value,t_sh,freq_value));
+        set(gcf,'renderer','Painters');
+        %saveas(gca,sprintf('./fig/delta_u_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.png',R_,int_value,t_sh,freq_value),'png');
+        hold off
     end
-    s_h = s_h + h;
-
-
-
-    %delta_u_nld(:,k) = -K_local*y_feedback+dist;
-
-    delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
-    
-    %delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-1),1);
-    delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
-
-    if isempty(P_res)
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
-    else
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
-    end
-
-    x_nL_d(:,k+1) = x(end,:)';
-    y_nL_d(:,k) = C*(x_nL_d(:,k));
-    y_increment = C*(x_nL_d(:,k+1)-x0);
-
-    % q(angle_index) = 0;
-    % q(freq_index) = freq_value;
-    % meas(1,k) = x_nL_d(:,k)'*diag(q)*x_nL_d(:,k);
-    % q(angle_index) = int_value;
-    % q(freq_index) = 0;
-    % meas(2,k) = x_nL_d(:,k)'*diag(q)*x_nL_d(:,k);
-    % meas(3,k) = delta_u_nld(:,k)'*R_*eye(size(B,2))*delta_u_nld(:,k);
 end
-
-% plotting(j,1) = R_;
-% plotting(j,2) = freq_value;
-% plotting(j,3) = int_value;
-% plotting(j,4) = max(delta_u_nld,[],'all');
-
-
-
-freq_limit = 0.05/50;
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,y_nL_d(1:3:end,:)','LineWidth',1.5);
-yline(1+freq_limit,'--');
-yline(1-freq_limit,'--');
-title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
-ylabel('$\omega$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-%savefig(sprintf('./fig/omega_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.fig',R_,int_value,t_sh,freq_value));
-set(gcf,'renderer','Painters');
-%saveas(gca,sprintf('./fig/omega_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.png',R_,int_value,t_sh,freq_value),'png');
-hold off
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,y_nL_d(2:3:end,:)','LineWidth',1.5);
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,y_nL_d(3:3:end,:)','LineWidth',1.5);
-
-
-
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,delta_u_nld','LineWidth',1.5);
-ylabel('$\Delta u$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-title(sprintf(' t_{sh} = %.2f',t_sh),'Interpreter','tex')
-%savefig(sprintf('./fig/delta_u_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.fig',R_,int_value,t_sh,freq_value));
-set(gcf,'renderer','Painters');
-%saveas(gca,sprintf('./fig/delta_u_R_%0.1g_Angle_%0.1g_t_{sh}_%.2f_freq_%.2f.png',R_,int_value,t_sh,freq_value),'png');
-hold off
-
-
 
 
 
