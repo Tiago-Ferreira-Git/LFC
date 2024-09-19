@@ -54,6 +54,7 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
 
     tg_size = cumsum([ 1 ; bus_ss]);
 
+
     for i = 1:size(network,2)
 
 
@@ -94,8 +95,54 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     q(1:2:end,1) = 10;
     q(2:2:end,1) = 1;
 
+
+    
+    E_to = zeros(size(E));
+
+    
+    for i = 1:size(network,2)
+    
+    
+        neighbours = network(i).to_bus;
+    
+        E_to(tg_size(i):tg_size(i+1)-1,i*2-1:i*2) = ones(network(i).machines,2);
+    
+    
+        unique_areas = unique(network(i).to_bus(:,1),'rows');
+    
+    
+        for j = unique_areas'
+            neighbours = [neighbours ; network(j).to_bus];
+        end
+    
+        % Third order neighbours
+        unique_areas = unique(neighbours(:,1),'rows');
+
+        for j = unique_areas'
+            neighbours = [neighbours ; network(j).to_bus];
+        end
+
+
+        for j = 1:size(neighbours,1)
+            neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
+            E_to(tg_size(i):tg_size(i+1)-1,neigbour_index) = ones(network(i).machines,2);
+        end
+    
+    end
+
+    
+    E = E_to;
+
     tic
-    K = LQROneStepLTI(A,B,diag(q),0.001*eye(size(B,2)),E,NaN);
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.001*eye(size(B,2)),E,NaN);
+    figure
+    plot(trace_records(trace_records>0))
+    xlabel('Iterations')
+    ylabel("trace(P_{inf})",'Interpreter','tex')
+    
+    savefig('./fig/trace_my_method.fig');
+    set(gcf,'renderer','Painters');
+    saveas(gca,'./fig/trace_my_method.png','png');
     toc
 
 end
