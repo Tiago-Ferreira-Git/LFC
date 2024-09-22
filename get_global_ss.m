@@ -24,7 +24,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
         mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
     
-
+        % mpc.tg_con(:,4) = 0;
 
 
     
@@ -63,6 +63,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             %network(j).damping = network(j).damping/network(j).machines;
             network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100);
             network(j).inertia = network(j).inertia/network(j).machines;
+            %network(j).tg_con(:,4) = 0;
+            %network(j).freq_feedback(:) = 0;
         end
 
         %% Getting lines that connect to other areas
@@ -201,6 +203,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B =  [ zeros(1,size(B_area,2)); B_area];
         
         
+        %starts after A_global + freq + 1
+        network(i).mec_index = size(A_global,1)+2:size(A_global,1)+size(A,1);
+        network(i).u_index = size(B_global,2)+1:size(B_global,2)+size(B_area,2);
+
+
         
         %Add renewables state
         mask = ismember(network(i).bus,ren_data.bus);
@@ -216,6 +223,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             n_ren = sum(mask);
             network(i).res = n_ren;
+
+            network(i).res_index = index+1:1:index+n_ren;
             ren_ss(n_areas:n_areas+n_ren-1) = index+1:1:index+n_ren;
             
             for j = 1:n_ren

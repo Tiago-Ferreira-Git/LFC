@@ -12,12 +12,12 @@ flag_ren = 0;
 flag_plot_metrics = 0;
 
 
-[mpc,n_res,idx_initial] = get_g('case14',flag_ren);
+[mpc,n_res,idx_initial] = get_g('case118',flag_ren);
 idx = idx_initial;
 mpc = runopf(mpc,opt);
 clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
 
-n_areas = 3;
+n_areas = 30;
 [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
 max(A_c,[],'all')
 network_initial = network;
@@ -25,17 +25,17 @@ network_initial = network;
 
 
 %%%%%%save('data/sim_118_30')
-% 
+
 % 
 % clear all
 % clearvars -except path; close all; clc;
-
+% 
 % load('data/sim_118_30')
 %%
 
 h = 0.1;
 
-simulation_hours = 5;
+simulation_hours = 0.2;
 simulation_seconds = 0 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
@@ -79,9 +79,10 @@ if flag_ren
 else
     P_res = [];
 end
+% 
+% w_load = zeros(size(w_load));
 
 P_load = PL0 + w_load;
-
 
 
 
@@ -113,7 +114,7 @@ delta_u_nld = zeros(size(B,2),size(t_L,2));
 y_nL_d = zeros(size(C,1),size(t_L,2));
 x_nL_d(:,1) = zeros(size(A,1),1);
 
-t_sh = 10*h;
+t_sh = 100*h;
 tic
 
 
@@ -123,8 +124,9 @@ q = zeros(1,size(A,1));
 freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
 angle_index = cumsum(bus_ss(:,2));
 
+
 q(1,freq_index) = 4; 
-q(1,angle_index) =  0.01;
+q(1,angle_index) =  1;
 
 
 meas = zeros(3,length(t_L));
@@ -143,9 +145,9 @@ tic
 % 
 
 
-K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
-
-%[K,~,trace_records] = LQROneStepLTI(A,B,diag(q),10*eye(size(B,2)),E,NaN);
+K = dlqr(A,B,diag(q),1e9*eye(size(B,2)));
+%K = zeros(size(B,2),size(A,1));
+%[K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.01*eye(size(B,2)),E,NaN);
 
 
 %[K,E_fs] = slow_ss(mpc,debug,network,h);
@@ -195,12 +197,12 @@ for k = 1:length(t_L)
     
     
     
-    delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-1),1);
+    delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
     
     if isempty(P_res)
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
     else
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
     end
     
     x_nL_d(:,k+1) = x(end,:)';

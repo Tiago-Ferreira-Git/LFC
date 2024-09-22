@@ -92,8 +92,8 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     [A,B,~] = discrete_dynamics(A_global,B_global,zeros(size(A_global,1),1),h);
 
     q = zeros(1,size(A,1));
-    q(1:2:end) = 0;
-    q(2:2:end) = 1000;
+    q(1:2:end,1) = 10;
+    q(2:2:end,1) = 1;
 
 
     
@@ -134,7 +134,7 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     % E = E_to;
 
     tic
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.1*eye(size(B,2)),E,NaN);
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.0001*eye(size(B,2)),E,NaN);
     figure
     plot(trace_records(trace_records>0))
     xlabel('Iterations')
