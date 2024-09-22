@@ -50,7 +50,7 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     %Add tie-lines
     E = zeros(size(B_global,2),size(A_global,1));
     E_fs = zeros(size(B_global,2),size(A_global,1));
-
+    k_ties = zeros(1,length(network));
 
     tg_size = cumsum([ 1 ; bus_ss]);
 
@@ -85,17 +85,20 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
         end
         
         A_global(2*i-1, i*2) = T_i/network(i).inertia;
-
+        k_ties(i) = T_i;
     end
 
    
     [A,B,~] = discrete_dynamics(A_global,B_global,zeros(size(A_global,1),1),h);
 
     q = zeros(1,size(A,1));
-    q(1:2:end,1) = 10;
-    q(2:2:end,1) = 1;
 
+    %k_ties = A_global(1:2:end,2:2:end);
 
+    q(1:2:end) = 10.*k_ties;
+    q(2:2:end) =0.001.*k_ties;
+
+    
     
     E_to = zeros(size(E));
 
@@ -129,12 +132,26 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
         end
     
     end
+    
+
+
+    R_ = zeros(1,size(B,2));
+
+    j = 1;
+
+    for i = 1:size(network,2)
+
+        network(i).machines*size(network(i).to_bus,1);
+        R_(j:j-1+network(i).machines) = k_ties(i);
+        j = j + network(i).machines;
+    end
+
 
     
-    E = E_to;
+    %E = E_to;
 
     tic
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.001*eye(size(B,2)),E,NaN);
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e3.*R_),E,NaN);
     figure
     plot(trace_records(trace_records>0))
     xlabel('Iterations')

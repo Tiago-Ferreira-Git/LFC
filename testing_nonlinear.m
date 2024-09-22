@@ -6,7 +6,7 @@ opt = mpoption('verbose',0,'out.all',0);
 
     
 
-% 
+
 % debug = 2;
 % flag_ren = 0;
 % flag_plot_metrics = 0;
@@ -25,18 +25,18 @@ opt = mpoption('verbose',0,'out.all',0);
 
 
 %%%%%%save('data/sim_118_30')
-% 
-% 
-% clear all
-% clearvars -except path; close all; clc;
+
+
+clear all
+clearvars -except path; close all; clc;
 
 load('data/sim_118_30')
 %%
 
 h = 0.1;
 
-simulation_hours = 0;
-simulation_seconds = 1000 + 3600*simulation_hours;
+simulation_hours = 1;
+simulation_seconds = 500 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -160,6 +160,7 @@ for k = 1:length(t_L)
     delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
     
     if isempty(P_res)
+        %nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u,debug)
         [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
     else
         [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
