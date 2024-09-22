@@ -6,21 +6,21 @@ opt = mpoption('verbose',0,'out.all',0);
 
     
 
-% 
-% debug = 2;
-% flag_ren = 0;
-% flag_plot_metrics = 0;
-% 
-% 
-% [mpc,n_res,idx_initial] = get_g('case118',flag_ren);
-% idx = idx_initial;
-% mpc = runopf(mpc,opt);
-% clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
-% 
-% n_areas = 30;
-% [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
-% max(A_c,[],'all')
-% network_initial = network;
+
+debug = 2;
+flag_ren = 0;
+flag_plot_metrics = 0;
+
+
+[mpc,n_res,idx_initial] = get_g('case14',flag_ren);
+idx = idx_initial;
+mpc = runopf(mpc,opt);
+clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
+
+n_areas = 3;
+[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
+max(A_c,[],'all')
+network_initial = network;
 
 
 
@@ -30,13 +30,13 @@ opt = mpoption('verbose',0,'out.all',0);
 % clear all
 % clearvars -except path; close all; clc;
 
-load('data/sim_118_30')
+% load('data/sim_118_30')
 %%
 
 h = 0.1;
 
-simulation_hours = 0;
-simulation_seconds = 1000 + 3600*simulation_hours;
+simulation_hours = 5;
+simulation_seconds = 0 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -50,7 +50,7 @@ simulation_seconds = 1000 + 3600*simulation_hours;
 Pgen0 = C*x0;
 Pgen0 = Pgen0(2:3:end,1);
 
-teste = Pgen0 - (PL0 + Pt0 - Ploss); 
+teste = Pgen0 - (PL0 + Pt0 ); 
 
 % Simulation Setup
 
@@ -62,8 +62,27 @@ w = zeros(size(W,2),size(t_L,2));
 
 [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss);
 
-P_res = x0(ren_ss,1) + w_ren;
+if flag_ren
+    data = load('data\solar.mat');
+    data = data.data;
+    data.data(:,2:end) = data.data(:,2:end)./100;
+    if ceil(simulation_seconds/3600) ~= 1
+        P_res = resample(data.data(1:ceil(simulation_seconds/3600),2:end),3600/0.1,1,'Dimension',1);
+        P_res = P_res(:,1:size(w_ren,2));
+    else
+        P_res = data.data(1,2:end);
+    end
+    % 
+    P_res = P_res';
+    P_res = P_res + w_ren;
+    
+else
+    P_res = [];
+end
+
 P_load = PL0 + w_load;
+
+
 
 
 % Nonlinear Simulation
@@ -94,7 +113,7 @@ delta_u_nld = zeros(size(B,2),size(t_L,2));
 y_nL_d = zeros(size(C,1),size(t_L,2));
 x_nL_d(:,1) = zeros(size(A,1),1);
 
-t_sh = 100*h;
+t_sh = 10*h;
 tic
 
 
@@ -121,11 +140,24 @@ tic
 
 
 
-
-[K,E_fs] = slow_ss(mpc,debug,network,h);
-
+% 
 
 
+K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
+
+%[K,~,trace_records] = LQROneStepLTI(A,B,diag(q),10*eye(size(B,2)),E,NaN);
+
+
+%[K,E_fs] = slow_ss(mpc,debug,network,h);
+
+
+
+
+% figure
+% plot(trace_records(trace_records>0))
+% xlabel('Iterations')
+% ylabel("trace(P_{inf})",'Interpreter','tex')
+% 
 
 
 K_local = zeros(size(K));
@@ -144,20 +176,26 @@ for k = 1:length(t_L)
         k
     end
     
-    if s_h >= t_sh || k == 1        
-        dist = -K_neighbour*y_feedback;
-        %dist = -K_neighbour*(x_nL_d(:,k)-x0);
+    if s_h >= t_sh || k == 1    
+        if(size(K,2) == size(A,1))        
+          dist = -K_neighbour*(x_nL_d(:,k)-x0);
+        else
+          dist = -K_neighbour*y_feedback;
+        end
         s_h = 0.0;
     end
     s_h = s_h + h;
     
     
+    if(size(K,2) == size(A,1))        
+        delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
+    else
+        delta_u_nld(:,k) = -K_local*y_feedback+dist;
+    end
     
-    delta_u_nld(:,k) = -K_local*y_feedback+dist;
     
-    %delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
     
-    delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
+    delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-1),1);
     
     if isempty(P_res)
         [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);

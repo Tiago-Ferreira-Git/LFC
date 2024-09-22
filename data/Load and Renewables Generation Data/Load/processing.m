@@ -6,7 +6,7 @@ myDir = pwd; %gets directory
 myFiles = dir(fullfile(myDir,'2022/','*.csv')); %gets all wav files in struct
 
 w_load = zeros(length(myFiles),24*365+1);
-Delta_w_load = w_load;
+w_load_profile = w_load;
 teste = w_load;
 
 
@@ -85,7 +85,7 @@ for j = 1:length(myFiles)
     end
 
 
-    Delta_w_load(j,:) = (y_meas-y_forecast)'/mean(y_forecast);
+    w_load_profile(j,:) = 1 + (y_meas-y_forecast)'/mean(y_forecast);
 
 end
 %%
@@ -106,12 +106,12 @@ plot(t,teste)
 xlabel('Time (s)')
 ylabel('Load - MW - Measured')
 
-
+%%
 
 figure
-stairs(t(mask),Delta_w_load(:,mask)')
+stairs(t(mask),w_load_profile(:,mask)')
 xlabel('Time (s)')
-ylabel('Load - MW')
+ylabel('Load - $1 + \frac{measured - forecasted}{mean(forecasted)}$','Interpreter','latex')
 
 
-
+save('../../load_profile.mat','w_load_profile')

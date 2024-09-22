@@ -6,8 +6,12 @@ function [mpc,n_ren,idx] = get_g(data_file,flag_ren)
         n_ren = size(data.bus,1);
     end
     % 'case118'
-    mpc = loadcase(data_file);
-
+    if length(strsplit(data_file,'.mat')) == 2
+        mpc = load(data_file);
+        mpc = mpc.mpc_opf;
+    else
+        mpc = loadcase(data_file);
+    end
     % 
     % g.mac.mac_con=mac_con;
     % %g.tg.tg_con=tg_con;
