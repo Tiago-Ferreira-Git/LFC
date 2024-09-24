@@ -94,35 +94,50 @@ for j = 1:length(myFiles)
     end
 
 
-    w_ren_profile(j,:) = 1 + (y_meas-y_forecast)'/mean(y_forecast);
+    w_ren_profile(j,:) = y_meas'/mean(y_meas);
 
 
-    time_elapsed = size(w_ren,2);
-
-    t = 0:3600:(time_elapsed-1)*3600;
-    mask = t < 3600*24;
-        
-    figure
-    plot(t,w_ren(j,:))
-    xlabel('Time (s)')
-    ylabel('Solar - pu - Forecast')
-    
-    
-    figure
-    plot(t,teste(j,:))
-    xlabel('Time (s)')
-    ylabel('Soalr - MW - Measured')
 
 end
 
 
+time_elapsed = size(w_ren,2);
+
+t = 0:3600:(time_elapsed-1)*3600;
+mask = t < 3600*24;
+    
+figure
+plot(t(mask),w_ren(:,mask))
+xlabel('Time (s)')
+ylabel('Solar - pu - Forecast')
+
+
+figure
+plot(t(mask),teste(:,mask))
+xlabel('Time (s)')
+ylabel('Soalr - MW - Measured')
 
 %%
 
-figure
-stairs(t(mask),w_ren_profile(:,mask)')
+
+
+figure('Position',4*[0 0 2*192 144]); % Nice aspect ratio for double column
+hold on;
+grid on;
+box on;
+set(gca,'FontSize',20);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+
+stairs(t(mask),w_ren_profile(:,mask)','LineWidth',1.5)
 xlabel('Time (s)')
-ylabel('Load - $1 + \frac{measured - forecasted}{mean(forecasted)}$','Interpreter','latex')
+ylabel('RES - $\frac{measured}{mean(measured)}$','Interpreter','latex')
+hold off;
+% Save figure to .fig and .eps formats
+savefig('RES.fig');
+set(gcf,'renderer','Painters');
+saveas(gca,'RES.svg','svg');
+
+
 
 
 save('../../ren_profile.mat','w_ren_profile')

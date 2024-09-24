@@ -85,7 +85,8 @@ for j = 1:length(myFiles)
     end
 
 
-    w_load_profile(j,:) = 1 + (y_meas-y_forecast)'/mean(y_forecast);
+    w_load_profile(j,:) = y_meas'/mean(y_meas);
+    %w_load_profile(j,:) = y_forecast'/y_forecast(1);
 
 end
 %%
@@ -93,7 +94,7 @@ end
 time_elapsed = size(w_load,2);
 
 t = 0:3600:(time_elapsed-1)*3600;
-mask = t < 3600*24;
+mask = t < 3600*24*1;
 
 figure
 plot(t,w_load)
@@ -108,10 +109,25 @@ ylabel('Load - MW - Measured')
 
 %%
 
-figure
-stairs(t(mask),w_load_profile(:,mask)')
+
+figure('Position',4*[0 0 2*192 144]); % Nice aspect ratio for double column
+hold on;
+grid on;
+box on;
+set(gca,'FontSize',20);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+
+stairs(t(mask),w_load_profile(:,mask)','LineWidth',1.5)
 xlabel('Time (s)')
-ylabel('Load - $1 + \frac{measured - forecasted}{mean(forecasted)}$','Interpreter','latex')
+ylabel('Load - $\frac{measured}{mean(measured)}$','Interpreter','latex')
+hold off;
+% Save figure to .fig and .eps formats
+savefig('Load.fig');
+set(gcf,'renderer','Painters');
+saveas(gca,'Load.svg','svg');
+
+
+
 
 
 save('../../load_profile.mat','w_load_profile')
