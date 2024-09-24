@@ -95,8 +95,11 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
 
     %k_ties = A_global(1:2:end,2:2:end);
 
-    q(1:2:end) = 10.*k_ties;
-    q(2:2:end) =0.001.*k_ties;
+    % q(1:2:end) = 10.*k_ties;
+    % q(2:2:end) = 0.001.*k_ties;
+
+    q(1:2:end) = 10;
+    q(2:2:end) = 1;
 
     
     
@@ -149,9 +152,9 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
 
     
     %E = E_to;
-
+    %diag(1e2.*R_)
     tic
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e3.*R_),E,NaN);
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.001*eye(size(B,2)),E,NaN);
     figure
     plot(trace_records(trace_records>0))
     xlabel('Iterations')

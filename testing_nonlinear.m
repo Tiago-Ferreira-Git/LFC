@@ -36,7 +36,7 @@ load('data/sim_118_30')
 h = 0.1;
 
 simulation_hours = 1;
-simulation_seconds = 500 + 3600*simulation_hours;
+simulation_seconds = 0 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
@@ -63,6 +63,7 @@ w = zeros(size(W,2),size(t_L,2));
 [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss);
 
 P_res = x0(ren_ss,1) + w_ren;
+% w_load = zeros(size(w_load));
 P_load = PL0 + w_load;
 
 
@@ -104,8 +105,10 @@ q = zeros(1,size(A,1));
 freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
 angle_index = cumsum(bus_ss(:,2));
 
-q(1,freq_index) = 4; 
-q(1,angle_index) =  0.01;
+q(1,freq_index) = 4;
+q(1,angle_index) =  1;
+R = 10000;
+
 
 
 meas = zeros(3,length(t_L));
@@ -119,13 +122,13 @@ tic
 
 
 
-
+K = dlqr(A,B,diag(q),R*eye(size(B,2)));
 
 
 [K,E_fs] = slow_ss(mpc,debug,network,h);
 
 
-
+% K = zeros(size(K));
 
 
 K_local = zeros(size(K));
@@ -135,27 +138,77 @@ K_neighbour(~logical(E_fs)) = K(~logical(E_fs));
 
 
 y_feedback = zeros(2*n_areas,1);
+
+flag_update = false;
 for k = 1:length(t_L) 
     
     y_feedback(1:2:end) = y_increment(1:3:end);
     y_feedback(2:2:end) = -y_increment(3:3:end);
-    
+
     if rem(k,1000) == 0
         k
     end
+
+
+    % if rem(k,1800/h) == 0 && ~flag_update
+    %     k
+    %     Pmech = C_mech*x_nL_d(:,k);
+    %     for i = 1:length(network)
+    %         mpc.gen(network(i).mac_nr,2) = Pmech(network(i).mac_nr)*100;
+    % 
+    %         mask = ismember( mpc.bus(:,1),network(i).bus);
+    % 
+    %         mpc.bus(mask,3) = mpc.bus(mask,3) + w_load(i,k-100)./length(network(1).bus);
+    % 
+    %         if(y_increment(3*i) > 0)
+    %             mpc.bus(mask,9) = mpc.bus(mask,9) + rem(rad2deg(y_increment(3*i)),180);
+    %         else
+    %             mpc.bus(mask,9) = mpc.bus(mask,9) + rem(rad2deg(y_increment(3*i)),-180);
+    %         end
+    % 
+    %     end
+    % 
+    %     mpc = runopf(mpc,opt);
+    % 
+    %     [A_c,B_c,~,~,~,~,~,~,~,~,~,~,ren_ss,~] = get_global_ss(mpc,n_areas,flag_ren,debug,network);
+    %     [x0,~,Pt0,~,Ploss]  = initial_conditions(size(A_c,1),size(B,2),bus_ss(:,2),network,mpc);
+    % 
+    %     u0 = u0 + delta_u_nld(:,k);
+    %     x0 = x_nL_d(:,k);
+    %     x0(angle_index) = 0;
+    % 
+    %     PL0 = P_load(:,k-100);
+    % 
+    %     [A,B,~] = discrete_dynamics(A_c,B_c,W_c,h);
+    % 
+    %     [K,E_fs] = slow_ss(mpc,debug,network,h);
+    % 
+    % 
+    %     K_local = zeros(size(K));
+    %     K_local(logical(E_fs)) = K(logical(E_fs));
+    %     K_neighbour = zeros(size(K));
+    %     K_neighbour(~logical(E_fs)) = K(~logical(E_fs));
+    %     flag_update = true;
+    % 
+    % 
+    % end
     
-    if s_h >= t_sh || k == 1        
-        dist = -K_neighbour*y_feedback;
-        %dist = -K_neighbour*(x_nL_d(:,k)-x0);
+    if s_h >= t_sh || k == 1
+        if size(K,2) == size(A,1)
+            dist = -K_neighbour*(x_nL_d(:,k)-x0);
+        else
+            dist = -K_neighbour*y_feedback;
+        end
+        %
         s_h = 0.0;
     end
     s_h = s_h + h;
     
-    
-    
-    delta_u_nld(:,k) = -K_local*y_feedback+dist;
-    
-    %delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
+    if size(K,2) == size(A,1)
+        delta_u_nld(:,k) = -K_local*(x_nL_d(:,k)-x0)+dist;
+    else
+        delta_u_nld(:,k) = -K_local*y_feedback+dist;
+    end
     
     delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
     
@@ -222,6 +275,25 @@ hold off
 
 
 toc
+%%
+
+
+figure
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+hold on
+grid on
+box on;
+stairs(t_L,y_nL_d(3:3:end,:)','LineWidth',1.5);
+title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
+ylabel('$\Delta \delta$ (rad)','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% savefig(sprintf('./fig/f_t_{sh}_%.2f.fig',t_sh));
+% set(gcf,'renderer','Painters');
+% saveas(gca,sprintf('./fig/f_t_{sh}_%.2f.png',t_sh),'png');
+% hold off
+
+
+
 
 
 

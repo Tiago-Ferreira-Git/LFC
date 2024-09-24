@@ -57,13 +57,6 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             end
 
         end
-        
-        
-        for j=1:n_areas
-            %network(j).damping = network(j).damping/network(j).machines;
-            network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100);
-            network(j).inertia = network(j).inertia/network(j).machines;
-        end
 
         %% Getting lines that connect to other areas
     
@@ -90,6 +83,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         end
     else
         areas = [];
+
+        for j=1:n_areas
+            %network(j).damping = network(j).damping/network(j).machines;
+            network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100);           
+        end
     end  
 
 
@@ -172,7 +170,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
                 machine_ss = [machine_ss ; (n:n+3-1)' ones(3,1).*n_machines];
             end
             
-            network(i).freq_feedback(j) = network(i).freq_feedback(j)/c;
+            network(i).freq_feedback(j) = network(i).tg_con(j,4)/c;
            
             A_area = [A_area zeros(size(A_area,1),size(A_mech,2)) ; zeros(size(A_mech,1),size(A_area,2)) A_mech];
             B_area = [B_area zeros(size(B_area,1),size(B_mech,2)) ; zeros(size(B_mech,1),size(B_area,2)) B_mech];
