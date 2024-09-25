@@ -190,7 +190,7 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
     % q(2:2:end) = 0.001;
     % R = 0.01;
 
-    % K = dlqr(A,B,diag(q),diag(1e2*R_));
+    K = dlqr(A,B,diag(q),diag(1e2*R_));
     % figure
     % plot(trace_records(trace_records>0))
     % xlabel('Iterations')
