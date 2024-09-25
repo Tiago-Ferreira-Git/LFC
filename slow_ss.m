@@ -1,4 +1,4 @@
-function [K,E_fs] = slow_ss(mpc,debug,network,h)
+function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
     
 
     %% Generate the ss for each area
@@ -6,12 +6,13 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     bus_ss = [];
     A_global = [];
     B_global = [];
+    W_global = [];
 
-    sum_area = 0;
+    
     for i=1:length(network)
         
         B = zeros(2,network(i).machines);
-
+        sum_area = 0;
         for j = 1:size(network(i).tg_con,1)
             
             Ts = network(i).tg_con(j,6); Tc = network(i).tg_con(j,7);  T5 = network(i).tg_con(j,10);
@@ -27,14 +28,22 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     
 
         A = zeros(2,2);
-        A(1,1) = (sum_area + network(i).damping)/network(i).inertia;
+
+        %- network(i).damping
+        A(1,1) = (sum_area - network(i).damping)/network(i).inertia;
 
         %Add error integrator 
         A(end,1) = -2*pi*60;
+
+        W = zeros(2,1);
+
+        W(1,1) = -1/(network(i).inertia);
+
         
         
         A_global = [A_global zeros(size(A_global,1), size(A,2)) ; zeros(size(A,1), size(A_global,2)) A ];
         B_global = [B_global zeros(size(B_global,1), size(B,2)); zeros(size(B,1), size(B_global,2)) B];
+        W_global = [W_global zeros(size(W_global,1), size(W,2)); zeros(size(W,1), size(W_global,2)) W];
         bus_ss = [bus_ss; size(network(i).tg_con,1) ];
         
     end
@@ -55,7 +64,7 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
     tg_size = cumsum([ 1 ; bus_ss]);
 
 
-    for i = 1:size(network,2)
+    for i = 1:length(network)
 
 
         neighbours = network(i).to_bus;
@@ -65,11 +74,7 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
         T_i = 0;
         for j = 1:size(neighbours,1)
             
-            if debug == 1
-                T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5)); 
-            else
-                T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
-            end
+            T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
 
             neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
 
@@ -88,54 +93,73 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
         k_ties(i) = T_i;
     end
 
+
+    figure
+    hold on
+    title("Reduced vs Original Model poles")
+    plot(real(eig(A_teste)),imag(eig(A_teste)),'x')
+    plot(real(eig(A_global)),imag(eig(A_global)),'x')
+    legend({'Original','Reduced'},'Location','best')
+    hold off
+
+
+    figure
+    hold on
+    title("Reduced vs Original Model poles zoomed")
+    plot(real(eig(A_teste)),imag(eig(A_teste)),'x')
+    plot(real(eig(A_global)),imag(eig(A_global)),'x')
+    legend({'Original','Reduced'},'Location','best')
+    xline(0)
+    xlim([-0.205,0.003])
+    hold off
    
-    [A,B,~] = discrete_dynamics(A_global,B_global,zeros(size(A_global,1),1),h);
+    [A,B,W] = discrete_dynamics(A_global,B_global,W_global,h);
 
     q = zeros(1,size(A,1));
 
     %k_ties = A_global(1:2:end,2:2:end);
 
-    % q(1:2:end) = 10.*k_ties;
-    % q(2:2:end) = 0.001.*k_ties;
+    q(1:2:end) = 10.*k_ties;
+    q(2:2:end) = 0.001.*k_ties;
 
-    q(1:2:end) = 10;
-    q(2:2:end) = 1;
-
-    
-    
-    E_to = zeros(size(E));
+    % % q(1:2:end) = 10;
+    % % q(2:2:end) = 1;
 
     
-    for i = 1:size(network,2)
     
-    
-        neighbours = network(i).to_bus;
-    
-        E_to(tg_size(i):tg_size(i+1)-1,i*2-1:i*2) = ones(network(i).machines,2);
-    
-    
-        unique_areas = unique(network(i).to_bus(:,1),'rows');
-    
-    
-        for j = unique_areas'
-            neighbours = [neighbours ; network(j).to_bus];
-        end
-    
-        % Third order neighbours
-        unique_areas = unique(neighbours(:,1),'rows');
-
-        for j = unique_areas'
-            neighbours = [neighbours ; network(j).to_bus];
-        end
-
-
-        for j = 1:size(neighbours,1)
-            neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
-            E_to(tg_size(i):tg_size(i+1)-1,neigbour_index) = ones(network(i).machines,2);
-        end
-    
-    end
-    
+    % E_to = zeros(size(E));
+    % 
+    % 
+    % for i = 1:size(network,2)
+    % 
+    % 
+    %     neighbours = network(i).to_bus;
+    % 
+    %     E_to(tg_size(i):tg_size(i+1)-1,i*2-1:i*2) = ones(network(i).machines,2);
+    % 
+    % 
+    %     unique_areas = unique(network(i).to_bus(:,1),'rows');
+    % 
+    % 
+    %     for j = unique_areas'
+    %         neighbours = [neighbours ; network(j).to_bus];
+    %     end
+    % 
+    %     % Third order neighbours
+    %     unique_areas = unique(neighbours(:,1),'rows');
+    % 
+    %     for j = unique_areas'
+    %         neighbours = [neighbours ; network(j).to_bus];
+    %     end
+    % 
+    % 
+    %     for j = 1:size(neighbours,1)
+    %         neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
+    %         E_to(tg_size(i):tg_size(i+1)-1,neigbour_index) = ones(network(i).machines,2);
+    %     end
+    % 
+    % end
+    % 
 
 
     R_ = zeros(1,size(B,2));
@@ -151,14 +175,26 @@ function [K,E_fs] = slow_ss(mpc,debug,network,h)
 
 
     
+    
     %E = E_to;
     %diag(1e2.*R_)
     tic
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),0.001*eye(size(B,2)),E,NaN);
-    figure
-    plot(trace_records(trace_records>0))
-    xlabel('Iterations')
-    ylabel("trace(P_{inf})",'Interpreter','tex')
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e2.*R_),E,NaN);
+
+    % opts.verbose = true;
+    % opts.maxOLIt = 10;
+    % opts.W = 100;
+    % [K,Pinf] = LQRFiniteHorizonLTI(A,B,diag(q),diag(1e2.*R_),E,opts);
+    % 
+    % q(1:2:end) = 4;
+    % q(2:2:end) = 0.001;
+    % R = 0.01;
+
+    % K = dlqr(A,B,diag(q),diag(1e2*R_));
+    % figure
+    % plot(trace_records(trace_records>0))
+    % xlabel('Iterations')
+    % ylabel("trace(P_{inf})",'Interpreter','tex')
     
     savefig('./fig/trace_my_method.fig');
     set(gcf,'renderer','Painters');

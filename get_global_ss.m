@@ -23,8 +23,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
         mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
+        
     
-
+        mpc.tg_con(:,4) = mpc.tg_con(:,4)./4;
 
 
     
@@ -58,6 +59,13 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
         end
 
+
+        for j=1:n_areas
+            %network(j).damping = network(j).damping/network(j).machines;
+            network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100); 
+            network(j).inertia = network(j).inertia/network(j).machines;
+        end
+
         %% Getting lines that connect to other areas
     
         lines = mpc.branch;
@@ -81,6 +89,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             end
         
         end
+
+
+
+
+
     else
         areas = [];
 

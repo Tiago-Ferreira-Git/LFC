@@ -1,12 +1,7 @@
-function dxdt = nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u,debug)
+function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u,debug)
    
 
     delta_x = x - x0;
-
-    if nargin < 12
-        
-        delta_u = -K*delta_x;
-    end
 
 
     dxdt = zeros(size(x0));
