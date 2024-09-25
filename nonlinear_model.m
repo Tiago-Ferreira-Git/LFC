@@ -1,4 +1,4 @@
-function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u,debug)
+function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,delta_u,debug)
    
 
     delta_x = x - x0;
@@ -23,8 +23,8 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,del
         area_index = freq_index(i):freq_index(i+1)-1;
         x_ = x(area_index);
 
-        x_mec_index = freq_index(i)+1:freq_index(i+1)-2-n_res;
-        u_mec_index = u_index(i):u_index(i+1)-1;
+        x_mec_index = network(i).mec_index;
+        u_mec_index = network(i).u_index;
 
         dxdt(x_mec_index) = network(i).A*x(x_mec_index) + network(i).B*u(u_mec_index)+ freq_feedback.*(delta_x(area_index(1)))  ;
         
@@ -35,11 +35,10 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,del
         if n_res ~= 0
             P_res = network(i).C_res*x_;
 
-            error 'P_res(i,k)?' 
             dxdt(freq_index(i)) = (P_mech./x_(1) + P_res - PL(i) - Pt0(i))./network(i).inertia;
 
 
-            dxdt(freq_index(i+1)-n_res:freq_index(i+1)-1) = network(i).W_res*Pres(index_res:index_res+n_res-1,k);
+            dxdt(freq_index(i+1)-n_res:freq_index(i+1)-1) = network(i).W_res*Pres(index_res:index_res+n_res-1);
             index_res = index_res + n_res;
             
         else
@@ -55,17 +54,19 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,del
                 ang_diff = (delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(j,1))));
             end
 
-            dxdt(freq_index(i)) = dxdt(freq_index(i)) + (sin(ang_diff)/(network(i).to_bus(j,5)))/network(i).inertia;
+           dxdt(freq_index(i)) = dxdt(freq_index(i)) + (sin(ang_diff)/(network(i).to_bus(j,5) * network(i).inertia));
         end
 
         % Frequency error dynamics
         if debug == 1
-            dxdt(angle_index(i)) = -delta_x(freq_index(i));
+            dxdt(angle_index(i)) = -delta_x(area_index(1));
         else
-            dxdt(angle_index(i)) = -2*pi*60*delta_x(freq_index(i));
+            dxdt(angle_index(i)) = -2*pi*60*delta_x(area_index(1));
         end
+        % 
+        % mask = abs(dxdt) < 1e-7;
+        % dxdt(mask) = 0;
 
-        
       
     end
 end

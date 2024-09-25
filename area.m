@@ -26,6 +26,10 @@ classdef area
         W_res
         W
         freq_feedback
+        mec_index
+        u_index
+        res_index
+        disturbance_res_index
     end
 
     methods
@@ -55,6 +59,13 @@ classdef area
             obj.res_bus = [];
             obj.res = 0;
             obj.freq_feedback = [];
+
+
+
+            mec_index = [];
+            u_index = [];
+            res_index = [];
+            disturbance_res_index = [];
             
         end
     end

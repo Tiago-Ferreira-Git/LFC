@@ -26,9 +26,12 @@ network_initial = network;
 
 %%%%%%save('data/sim_118_30')
 
+
 % 
 % clear all
 % clearvars -except path; close all; clc;
+% 
+% load('data/sim_118_30')
 % 
 % load('data/sim_118_30')
 %%
@@ -62,7 +65,7 @@ simulation_seconds = 0 + 3600*simulation_hours;
 Pgen0 = C*x0;
 Pgen0 = Pgen0(2:3:end,1);
 
-teste = Pgen0 - (PL0 + Pt0 - Ploss); 
+teste = Pgen0 - (PL0 + Pt0 ); 
 
 % Simulation Setup
 
@@ -74,10 +77,28 @@ w = zeros(size(W,2),size(t_L,2));
 
 [w,w_load,w_ren] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss);
 
-P_res = x0(ren_ss,1) + w_ren;
+if flag_ren
+    data = load('data\solar.mat');
+    data = data.data;
+    data.data(:,2:end) = data.data(:,2:end)./100;
+    if ceil(simulation_seconds/3600) ~= 1
+        P_res = resample(data.data(1:ceil(simulation_seconds/3600),2:end),3600/0.1,1,'Dimension',1);
+        P_res = P_res(:,1:size(w_ren,2));
+    else
+        P_res = data.data(1,2:end);
+    end
+    % 
+    P_res = P_res';
+    P_res = P_res + w_ren;
+    
+else
+    P_res = [];
+end
+% 
 % w_load = zeros(size(w_load));
-%w_load(:,36000:end-2) = w_load(:,1:36000);
+
 P_load = PL0 + w_load;
+
 
 
 % Nonlinear Simulation
@@ -110,6 +131,7 @@ q = zeros(1,size(A,1));
 
 freq_index = [1 ;cumsum(bus_ss(1:end-1,2))+1];
 angle_index = cumsum(bus_ss(:,2));
+
 
 q(1,freq_index) = 4;
 q(1,angle_index) =  1;
@@ -182,10 +204,9 @@ for k = 1:length(t_L)
     delta_u_nld(:,k) = min(max(delta_u_nld(:,k),-0.1),0.1);
 
     if isempty(P_res)
-        %nonlinear_model(t,x,K,network,bus_ss,x0,u0,PL,Pres,Pt0,u_index,delta_u,debug)
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0,P_load(:,k),P_res,Pt0,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
     else
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,u_index,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,K,network,bus_ss,x0,u0,P_load(:,k),P_res(:,k),Pt0,delta_u_nld(:,k),debug),[0 h],x_nL_d(:,k),opts);
     end
 
     x_nL_d(:,k+1) = x(end,:)';
