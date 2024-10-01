@@ -92,17 +92,17 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
         A_global(2*i-1, i*2) = T_i/network(i).inertia;
         k_ties(i) = T_i;
     end
-
-
-    figure
-    hold on
-    title("Reduced vs Original Model poles")
-    plot(real(eig(A_teste)),imag(eig(A_teste)),'x')
-    plot(real(eig(A_global)),imag(eig(A_global)),'x')
-    legend({'Original','Reduced'},'Location','best')
-    hold off
-
-
+    % 
+    % 
+    % figure
+    % hold on
+    % title("Reduced vs Original Model poles")
+    % plot(real(eig(A_teste)),imag(eig(A_teste)),'x')
+    % plot(real(eig(A_global)),imag(eig(A_global)),'x')
+    % legend({'Original','Reduced'},'Location','best')
+    % hold off
+    % 
+    % 
     figure
     hold on
     title("Reduced vs Original Model poles zoomed")
@@ -120,86 +120,96 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
     %k_ties = A_global(1:2:end,2:2:end);
 
     q(1:2:end) = 10.*k_ties;
-    q(2:2:end) = 0.001.*k_ties;
-
-    % % q(1:2:end) = 10;
-    % % q(2:2:end) = 1;
+    q(2:2:end) = 0.1.*k_ties;
+    % 
+    % q(1:2:end) = 10;
+    % q(2:2:end) = 1;
 
     
     
-    % E_to = zeros(size(E));
-    % 
-    % 
-    % for i = 1:size(network,2)
-    % 
-    % 
-    %     neighbours = network(i).to_bus;
-    % 
-    %     E_to(tg_size(i):tg_size(i+1)-1,i*2-1:i*2) = ones(network(i).machines,2);
-    % 
-    % 
-    %     unique_areas = unique(network(i).to_bus(:,1),'rows');
-    % 
-    % 
-    %     for j = unique_areas'
-    %         neighbours = [neighbours ; network(j).to_bus];
-    %     end
-    % 
-    %     % Third order neighbours
-    %     unique_areas = unique(neighbours(:,1),'rows');
-    % 
-    %     for j = unique_areas'
-    %         neighbours = [neighbours ; network(j).to_bus];
-    %     end
-    % 
-    % 
-    %     for j = 1:size(neighbours,1)
-    %         neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
-    %         E_to(tg_size(i):tg_size(i+1)-1,neigbour_index) = ones(network(i).machines,2);
-    %     end
-    % 
-    % end
-    % 
+    E_to = zeros(size(E));
 
 
-    R_ = zeros(1,size(B,2));
+    for i = 1:size(network,2)
+
+
+        neighbours = network(i).to_bus;
+
+        E_to(tg_size(i):tg_size(i+1)-1,i*2-1:i*2) = ones(network(i).machines,2);
+
+
+        unique_areas = unique(network(i).to_bus(:,1),'rows');
+
+
+        for j = unique_areas'
+            neighbours = [neighbours ; network(j).to_bus];
+        end
+
+        % % Third order neighbours
+        % unique_areas = unique(neighbours(:,1),'rows');
+        % 
+        % for j = unique_areas'
+        %     neighbours = [neighbours ; network(j).to_bus];
+        % end
+
+
+        for j = 1:size(neighbours,1)
+            neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
+            E_to(tg_size(i):tg_size(i+1)-1,neigbour_index) = ones(network(i).machines,2);
+        end
+
+    end
+
+
+
+    R_ties = zeros(1,size(B,2));
 
     j = 1;
 
     for i = 1:size(network,2)
 
         network(i).machines*size(network(i).to_bus,1);
-        R_(j:j-1+network(i).machines) = k_ties(i);
+        R_ties(j:j-1+network(i).machines) = k_ties(i);
         j = j + network(i).machines;
     end
 
 
     
     
-    %E = E_to;
+    % E = E_to;
+    % E = ones(size(E));
     %diag(1e2.*R_)
     tic
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e2.*R_),E,NaN);
+    %K = dlqr(A,B,diag(q),diag(1e2.*R_ties));
 
-    % opts.verbose = true;
-    % opts.maxOLIt = 10;
-    % opts.W = 100;
-    % [K,Pinf] = LQRFiniteHorizonLTI(A,B,diag(q),diag(1e2.*R_),E,opts);
-    % 
-    % q(1:2:end) = 4;
-    % q(2:2:end) = 0.001;
-    % R = 0.01;
 
-    K = dlqr(A,B,diag(q),diag(1e2*R_));
+    %K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,300e3,1e-8,A,B,r,Z,T);
+
+
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e4.*R_ties),E,NaN);
     % figure
     % plot(trace_records(trace_records>0))
     % xlabel('Iterations')
     % ylabel("trace(P_{inf})",'Interpreter','tex')
-    
-    savefig('./fig/trace_my_method.fig');
-    set(gcf,'renderer','Painters');
-    saveas(gca,'./fig/trace_my_method.png','png');
-    toc
+
+
+    % 
+    % opts.verbose = true;
+    % opts.maxOLIt = 10;
+    % opts.W = 40;
+    % [K_cent,S] = dlqr(A,B,1e2*diag(q),1*eye(size(B,2)));
+    % [K,Pinf] = LQRFiniteHorizonLTI(A,B,1e2*diag(q),1*eye(size(B,2)),E,K_cent,S,opts);
+    % trace(Pinf)
+
+
+
+
+    % K = dlqr(A,B,diag(q),diag(1e2*R_));
+    % 
+    % savefig('./fig/trace_my_method.fig');
+    % set(gcf,'renderer','Painters');
+    % saveas(gca,'./fig/trace_my_method.png','png');
+    % toc
 
 end
 

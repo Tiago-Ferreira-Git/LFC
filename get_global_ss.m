@@ -25,7 +25,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
         
     
-        mpc.tg_con(:,4) = mpc.tg_con(:,4)./4;
+        % mpc.tg_con(:,4) = 0;
 
 
     

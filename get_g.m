@@ -7,8 +7,9 @@ function [mpc,n_ren,idx] = get_g(data_file,flag_ren)
     end
     % 'case118'
     if length(strsplit(data_file,'.mat')) == 2
-        mpc = load(data_file);
-        mpc = mpc.mpc_opf;
+
+        mpc = load(fullfile(pwd,'data\Synthethic Grids\',data_file));
+        mpc = mpc.mpc;
     else
         mpc = loadcase(data_file);
     end
