@@ -23,10 +23,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
         mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
-        % mpc.branch(:,4) = mpc.branch(:,4)*100;
         
     
-       % mpc.tg_con(:,4) = mpc.tg_con(:,4)./10;
+        mpc.tg_con(:,4) = mpc.tg_con(:,4)./10;
 
 
     
@@ -257,7 +256,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         if debug == 1
             A(end,1) = -1; 
         else
-            A(end,1) =  -2*pi*60;
+            A(end,1) = -2*pi*60;
         end
         B = [B; zeros(1,size(B,2))];
 
@@ -330,11 +329,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     L = zeros(size(B_global,2),n_areas);
     index_ss = cumsum(bus_ss(:,2))+1;
     index_ss = [1 ; index_ss];
+    C_index = 3:4:size(C_global,1);
     tg_size = cumsum([ 1 ; bus_ss(:,3)]);
     %tg_size = [1 ; tg_size];
-
-
-    bus = mpc.bus(:,8:9);
     for i = 1:size(network,2)
 
 
@@ -343,40 +340,21 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         E_fs(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
-
-        
-        z_mod = vecnorm(network(i).to_bus(:,4:5),2,2);
-        mask = bitand(network(i).to_bus(:,4) == 0, network(i).to_bus(:,10) ~= 0);
-        if any(mask)
-            z_mod(mask) = z_mod(mask).*network(i).to_bus(mask,10);
-        end
-        
-        if any(z_mod == 0)
-            1;
-        end
-
-
-        theta_shift = network(i).to_bus(:,11);
-        V_area = bus(network(i).to_bus(:,2),1);
-        V_neighbour = bus(network(i).to_bus(:,3),1);
-
-        phi = atan2(network(i).to_bus(:,5),(network(i).to_bus(:,4)));
-
-        Tij = V_area.*V_neighbour.*cos(deg2rad(bus(network(i).to_bus(:,2),2)) - deg2rad(bus(network(i).to_bus(:,3),2)) - theta_shift + phi-pi/2)./z_mod;
-
-        network(i).to_bus = [network(i).to_bus Tij];
-
         for j = 1:size(neighbours,1)
             
-            if isinf(Tij(j))
-                1;
+            if debug == 1
+                T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5)); 
+            else
+                T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
             end
-            if isnan(Tij(j))
-                1;
-            end
-               
+
+            % T_ji =  T_ji/10000;
+
+            %Default
+            %A_global(index_ss(i+1)-1, index_ss(neighbours(j,1))) =  A_global(index_ss(i+1)-1, index_ss(neighbours(j,1)) ) -T_ji;
+            
             %Changin ptie for error integral
-            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -Tij(j)/network(i).inertia;
+            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji/network(i).inertia;
             
 
             E(tg_size(i):tg_size(i+1)-1,index_ss(neighbours(j,1)):index_ss(neighbours(j,1)+1)-1) = ones(bus_ss(i,3),bus_ss(neighbours(j,1),2));
@@ -385,8 +363,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             Adjacency_matrix(i,neighbours(j,1)) = 1;
             L(1+tg_size(i):tg_size(i)+network(i).machines,neighbours(j,1)) = 1;
 
-           
+            T_i =  T_i + T_ji;
 
+            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
@@ -395,13 +374,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
         %Default
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
-        if isinf(sum(Tij))
-            1;
-        end
-        if isnan(sum(Tij))
-            1;
-        end
-        A_global(index_ss(i), index_ss(i+1)-1) = sum(Tij)/network(i).inertia;
+        
+        A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
         %C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end
