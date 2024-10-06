@@ -1,4 +1,4 @@
-function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
+function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
     
 
     %% Generate the ss for each area
@@ -106,7 +106,7 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
     figure
     hold on
     title("Reduced vs Original Model poles zoomed")
-    plot(real(eig(A_teste)),imag(eig(A_teste)),'x')
+    plot(real(eig(A_orig)),imag(eig(A_orig)),'x')
     plot(real(eig(A_global)),imag(eig(A_global)),'x')
     legend({'Original','Reduced'},'Location','best')
     xline(0)
@@ -186,11 +186,11 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_teste)
     %K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,300e3,1e-8,A,B,r,Z,T);
 
 
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e4.*R_ties),E,NaN);
-    % figure
-    % plot(trace_records(trace_records>0))
-    % xlabel('Iterations')
-    % ylabel("trace(P_{inf})",'Interpreter','tex')
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e5.*R_ties),E,NaN);
+    figure
+    plot(trace_records(trace_records>0))
+    xlabel('Iterations')
+    ylabel("trace(P_{inf})",'Interpreter','tex')
 
 
     % 

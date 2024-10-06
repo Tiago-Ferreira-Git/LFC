@@ -1,4 +1,4 @@
-function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug,network)
+function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug,network)
     
     base_mva = 100;
     ren_data = load('data\solar.mat');
@@ -25,7 +25,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
         
     
-        % mpc.tg_con(:,4) = 0;
+        % mpc.tg_con(:,4) = mpc.tg_con(:,4)./4;
 
 
     
@@ -376,6 +376,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
         
         A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
+        k_ties(i) = T_i;
         %C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end

@@ -12,13 +12,13 @@ flag_ren = 0;
 flag_plot_metrics = 0;
 
 
-[mpc,n_res,idx_initial] = get_g('ERCOT_reference/AutoSynGrid_OPF_250_2.mat',flag_ren);
+[mpc,n_res,idx_initial] = get_g('case14',flag_ren);
 idx = idx_initial;
 mpc = runpf(mpc,opt);
 clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
 
-n_areas = 30;
-[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
+n_areas = 3;
+[A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug);
 max(A_c,[],'all')
 network_initial = network;
 
@@ -34,7 +34,7 @@ network_initial = network;
 % load('data/sim_118_30')
 
 
-h = 1;
+h = 0.1;
 
 simulation_hours = 1;
 simulation_seconds = 0 + 3600*simulation_hours;
@@ -54,8 +54,10 @@ simulation_seconds = 0 + 3600*simulation_hours;
 % ylabel('Imaginary Axis')
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
-
-
+% 
+% for i = 1:n_areas
+%     [network(i).A,network(i).B,~] = discrete_dynamics(network(i).A,network(i).B,zeros(size(network(i).A,1),1),h);
+% end
 
 
 % Initial conditions
@@ -84,11 +86,7 @@ w = zeros(size(W,2),size(t_L,2));
 tspan = [0 simulation_seconds];
 
 
-u_index = zeros(length(network)+1,1);
-u_index(1) = 1;
-for i = 1:length(network) 
-    u_index(i+1) = u_index(i) + network(i).machines;
-end
+
 opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
 
 
@@ -125,18 +123,32 @@ s_h = 0.0;
 y_increment = C*(x_nL_d(:,1)-x0);
 
 tic
+q(freq_index) = 10.*k_ties;
+q(angle_index) = 0.1.*k_ties;
 
 
+R_ties = zeros(1,size(B,2));
+j = 1;
+for i = 1:size(network,2)
+    R_ties(j:j-1+network(i).machines) = k_ties(i);
+    j = j + network(i).machines;
+end
 
-K = dlqr(A,B,diag(q),R*eye(size(B,2)));
+% abs(eig(A-B*K*C_))
 
 
-[K,E_fs] = slow_ss(mpc,network,h,A_c);
+K  = LQROneStepLTI(A,B,diag(q),diag(0.01.*R_ties),E,NaN);
 
 
+% K = dlqr(A,B,diag(q),R*eye(size(B,2)));
+
+
+% [K,E_fs] = slow_ss(mpc,network,h,A_c);
+% 
+% 
 % K = zeros(size(K));
-
-
+% 
+% 
 K_local = zeros(size(K));
 K_local(logical(E_fs)) = K(logical(E_fs));
 K_neighbour = zeros(size(K));
@@ -235,9 +247,9 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_L,y_nL_d(1:3:end,:)','LineWidth',1.5);
-yline(1+freq_limit,'--');
-yline(1-freq_limit,'--');
+stairs(t_L,y_nL_d(1:3:end,:)'-1,'LineWidth',1.5);
+% yline(freq_limit,'--');
+% yline(freq_limit,'--');
 title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
 ylabel('$\omega$ (pu)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
@@ -286,63 +298,67 @@ toc
 
 
 %% Linear simulation - Reduced Model Simulation
-[K,E_fs,A_reduced,B_reduced,W_reduced] = slow_ss(mpc,network,h,A_c);
-
-C_reduced = eye(size(A_reduced));
-
-x_L_reduced = zeros(size(A_reduced,1),size(t_L,2));
-delta_u_reduced  = zeros(size(B_reduced,2),size(t_L,2));
-y_L_reduced  = zeros(size(C_reduced,1),size(t_L,2));
-x_L_reduced(:,1) = zeros(size(A_reduced,1),1);
-
-
-for k = 1:length(t_L)-1
-
-
-    delta_u_reduced(:,k) = -K*x_L_reduced(:,k);
-    delta_u_reduced(:,k) = min(max(delta_u_reduced(:,k),-0.1),0.1);
-
-    x_L_reduced(:,k+1) = A_reduced*x_L_reduced(:,k) + B_reduced*delta_u_reduced(:,k)+ W_reduced*w(:,k);
-    y_L_reduced(:,k+1) = C_reduced*(x_L_reduced(:,k+1));
-
-end
-
-
-freq_limit = 0.05/50;
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,y_L_reduced(1:2:end,:)','LineWidth',1.5);
-title('Reduced Linearized Model','Interpreter','tex')
-ylabel('$\Delta \omega$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-legend({'Area 1','Area 2','Area 3'},'Location','best')
-hold off
-
-
-figure
-set(gca,'TickLabelInterpreter','latex') % Latex style axis
-hold on
-grid on
-box on;
-stairs(t_L,delta_u_reduced','LineWidth',1.5);
-ylabel('$\Delta u$ (pu)','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-
-% % freq_limit = 0.05/50;
-% % figure
-% % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-% % hold on
-% % grid on
-% % box on;
-% % stairs(t_L,y_L_reduced(2:2:end,:)','LineWidth',1.5);
-% % title('Reduced Model','Interpreter','tex')
-% % ylabel('$\omega$ (pu)','interpreter','latex');
-% % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-% % legend({'Area 1','Area 2','Area 3'},'Location','best')
-% % hold off
+% [K,E_fs,A_reduced,B_reduced,W_reduced] = slow_ss(mpc,network,h,A_c);
+% 
+% C_reduced = eye(size(A_reduced));
+% 
+% x_L_reduced = zeros(size(A_reduced,1),size(t_L,2));
+% delta_u_reduced  = zeros(size(B_reduced,2),size(t_L,2));
+% y_L_reduced  = zeros(size(C_reduced,1),size(t_L,2));
+% x_L_reduced(:,1) = zeros(size(A_reduced,1),1);
+% 
+% 
+% for k = 1:length(t_L)-1
+% 
+% 
+%     delta_u_reduced(:,k) = -K*x_L_reduced(:,k);
+%     delta_u_reduced(:,k) = min(max(delta_u_reduced(:,k),-0.1),0.1);
+% 
+%     x_L_reduced(:,k+1) = A_reduced*x_L_reduced(:,k) + B_reduced*delta_u_reduced(:,k)+ W_reduced*w(:,k);
+%     y_L_reduced(:,k+1) = C_reduced*(x_L_reduced(:,k+1));
+% 
+% end
+% 
+% 
+% freq_limit = 0.05/50;
+% figure
+% set(gca,'TickLabelInterpreter','latex') % Latex style axis
+% hold on
+% grid on
+% box on;
+% stairs(t_L,y_L_reduced(1:2:end,:)','LineWidth',1.5);
+% title('Reduced Linearized Model','Interpreter','tex')
+% ylabel('$\Delta \omega$ (pu)','interpreter','latex');
+% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% legend({'Area 1','Area 2','Area 3'},'Location','best')
+% hold off
+% 
+% 
+% figure
+% set(gca,'TickLabelInterpreter','latex') % Latex style axis
+% hold on
+% grid on
+% box on;
+% stairs(t_L,delta_u_reduced','LineWidth',1.5);
+% ylabel('$\Delta u$ (pu)','interpreter','latex');
+% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% 
+% freq_limit = 0.05/50;
+% figure
+% set(gca,'TickLabelInterpreter','latex') % Latex style axis
+% hold on
+% grid on
+% box on;
+% stairs(t_L,y_L_reduced(2:2:end,:)','LineWidth',1.5);
+% title('Reduced Model','Interpreter','tex')
+% ylabel('$\omega$ (pu)','interpreter','latex');
+% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% legend({'Area 1','Area 2','Area 3'},'Location','best')
+% hold off
+% mask = abs(delta_u_reduced(:,end)) < 0.1; 
+% if sum(mask) < 10
+%     1;
+% end
 
 
 
@@ -356,8 +372,14 @@ y_L = zeros(size(C,1),size(t_L,2));
 x_L(:,1) = zeros(size(A,1),1);
 %y_L(:,1) = C*x0;
 
-% K  = LQROneStepLTI(A,B,diag(q),0.1*eye(size(B,2)),E,NaN);
-% K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
+
+%Closed loop in the original system
+C_ = zeros(2*length(network),size(C,2));
+C_(1:2:end) = C(1:3:end,:);
+C_(2:2:end) = -C(3:3:end,:);
+
+
+%K = dlqr(A,B,diag(q),0.1*eye(size(B,2)));
 %[K,E_fs] = slow_ss(mpc,network,h,A_c);
 
 

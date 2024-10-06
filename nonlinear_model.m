@@ -13,7 +13,7 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,delta_u,deb
     
     u = u0 + delta_u;
     
-    u = max(u,0);
+    % u = max(u,0);
 
     index_res = 1;
     for i = 1:length(network)
@@ -63,11 +63,8 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,delta_u,deb
         else
             dxdt(angle_index(i)) = -2*pi*60*delta_x(area_index(1));
         end
-        % 
-        % mask = abs(dxdt) < 1e-7;
-        % dxdt(mask) = 0;
-
-      
     end
+
+    dxdt;
 end
 

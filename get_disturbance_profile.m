@@ -145,7 +145,7 @@ function [w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(w,h,n_areas,sim
         P_res = [];
     end
     
-    % w_load = zeros(size(w_load));
+    %w_load = zeros(size(w_load));
     P_load = PL0+ w_load;
 
 
