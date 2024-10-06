@@ -23,6 +23,10 @@ clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulati
 
 n_areas = 3;
 [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs] = get_global_ss(mpc,n_areas,flag_ren,debug);
+if real(eig(A_c)) > 0
+    error 'Unstable Model'
+end
+
 max(A_c,[],'all')
 network_initial = network;
 
@@ -54,7 +58,7 @@ simulation_seconds = 0 + 3600*simulation_hours;
 
 [x0,u0,Pt0,PL0,Ploss]  = initial_conditions(size(A_c,1),size(B,2),bus_ss(:,2),network,mpc);
 Pgen0 = C*x0;
-Pgen0 = Pgen0(2:3:end,1);
+Pgen0 = Pgen0(2:2:end,1);
 
 teste = Pgen0 - (PL0 + Pt0 ); 
 
@@ -93,11 +97,11 @@ else
     P_res = [];
 end
 
-w_load = zeros(size(w_load));
+% w_load = zeros(size(w_load));
 P_load = PL0 + w_load;
 
 tspan = [0 simulation_seconds];
-opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
+opts = odeset('RelTol',1e-16,'AbsTol',1e-16);
 
 K = lqr(A_c,B_c,eye(size(A_c,1)),0.1*eye(size(B_c,2)));
 K = zeros(size(K));
@@ -110,6 +114,21 @@ delta_u = zeros(size(B,2),1);
 
 [t_L,x_L] = ode45(@(t,x) linearized_model_discrete(t,x,bus_ss,A_c,B_c,W_c,x0,u0,w_load(:,1),delta_u,K),[0 simulation_seconds],x0,opt);
 
+% %%
+% x_L_teste = zeros(size(x_L'));
+% x_L_dot_teste = zeros(size(x_L,2),1);
+% x_L_teste(:,1) = x0;
+% for k = 1:length(t_L)-1
+%     x_L_dot_teste = A_c *x_L_teste(:,k) + B_c*delta_u + W_c*w_load(:,1);
+% 
+%     x_L_teste(:,k+1) = x_L_teste(:,k) + h.*x_L_dot_teste;
+% 
+% 
+% end
+% %%
+
+
+
 y_L = C*(x_L');
 if any(isnan(x_L))
     return
@@ -121,7 +140,7 @@ end
 
 
 % Nonlinear Simulation
-
+opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
 
 freq_limit = 0.05/50;
 [t_nl,x_nL] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0,P_load(:,1),P_res,delta_u,mpc.bus(:,8:9),w_load(:,1),K),t_L,x0,opts);
@@ -138,7 +157,7 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_nl,y_nL(1:3:end,:)','LineWidth',1.5);
+stairs(t_nl,y_nL(1:2:end,:)','LineWidth',1.5);
 yline(1+freq_limit,'--');
 yline(1-freq_limit,'--');
 % title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
@@ -156,7 +175,7 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_L,y_L(1:3:end,:)','LineWidth',1.5);
+stairs(t_L,y_L(1:2:end,:)','LineWidth',1.5);
 yline(1+freq_limit,'--');
 yline(1-freq_limit,'--');
 % title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
@@ -166,7 +185,6 @@ xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
 set(gcf,'renderer','Painters');
 %saveas(gca,sprintf('./fig/f_t_{sh}_%.2f.png',t_sh),'png');
 hold off
-
 
 
 
@@ -176,7 +194,7 @@ set(gca,'TickLabelInterpreter','latex') % Latex style axis
 hold on
 grid on
 box on;
-stairs(t_nl,-y_nL(3:3:end,:)','LineWidth',1.5);
+stairs(t_nl,y_nL(2:2:end,:)','LineWidth',1.5);
 % title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
 ylabel('$\theta$ (rad)','interpreter','latex');
 xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
@@ -184,6 +202,44 @@ xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
 set(gcf,'renderer','Painters');
 %saveas(gca,sprintf('./fig/f_t_{sh}_%.2f.png',t_sh),'png');
 hold off
+
+
+
+%%
+% figure
+% set(gca,'TickLabelInterpreter','latex') % Latex style axis
+% hold on
+% grid on
+% box on;
+% stairs(t_nl,-y_nL(3:3:end,:)','LineWidth',1.5);
+% % title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
+% ylabel('$\theta$ (rad)','interpreter','latex');
+% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% %savefig(sprintf('./fig/f_t_{sh}_%.2f.fig',t_sh));
+% set(gcf,'renderer','Painters');
+% %saveas(gca,sprintf('./fig/f_t_{sh}_%.2f.png',t_sh),'png');
+% hold off
+
+
+%%
+figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+hold on;
+grid on;
+box on;
+set(gca,'FontSize',20);
+set(gca,'TickLabelInterpreter','latex')
+
+errors = (y_nL - y_L);
+%error([5,10,15,20,25],:) = 0;
+for i = 1:size(C,1)
+    stairs(t_L,errors(i,:)','LineWidth',1.5);
+end
+ylabel('$\epsilon_{model}$ ','interpreter','latex');
+xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+set(gcf,'renderer','Painters');
+hold off
+
+
 
 %%
 % angles = -y_nL(3:3:end,:)';
@@ -280,23 +336,7 @@ hold off
 % end
 % 
 % 
-%%
-figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-hold on;
-grid on;
-box on;
-set(gca,'FontSize',20);
-set(gca,'TickLabelInterpreter','latex')
 
-error = (x_nL' - x_L')./(x_nL');
-%error([5,10,15,20,25],:) = 0;
-for i = 1:size(A,1)
-    stairs(t_L,error(i,:)','LineWidth',1.5);
-end
-ylabel('$\epsilon_{model}$ ','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-set(gcf,'renderer','Painters');
-hold off
 
 
 

@@ -26,7 +26,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         % mpc.branch(:,4) = mpc.branch(:,4)*100;
         
     
-       % mpc.tg_con(:,4) = mpc.tg_con(:,4)./10;
+       mpc.tg_con(:,4) = mpc.tg_con(:,4)./100;
 
 
     
@@ -286,12 +286,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
 
 
-        C = zeros(3,size(A,1));
+        C = zeros(2,size(A,1));
 
         C(1,1) = 1;
         C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
         %C(3,end) = 1;
-        C(3,end) = -1;
+        %C(3,end) = -1;
 
         network(i).C_mech = C(2,:);
 
@@ -363,7 +363,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         phi = atan2(network(i).to_bus(:,5),(network(i).to_bus(:,4)));
 
         Tij = V_area.*V_neighbour.*cos(deg2rad(bus(network(i).to_bus(:,2),2)) - deg2rad(bus(network(i).to_bus(:,3),2)) - theta_shift + phi-pi/2)./z_mod;
-
+        Tij = Tij./(2*pi*60);
         network(i).to_bus = [network(i).to_bus Tij];
 
         for j = 1:size(neighbours,1)
