@@ -10,7 +10,7 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,delta_u,bus,del
     freq_index = [1 ; angle_index+1];
     
     
-    % if t>150
+    % if t>1500
     %     t
     %     %delta_u = ones(size(delta_u)).*(sum(delta_load)/size(delta_u,1));
     % end
@@ -66,7 +66,11 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,delta_u,bus,del
 
 
         
-        ptie_teste = network(i).to_bus(:,end)'*(delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(:,1))));
+        % ptie_teste = network(i).to_bus(:,end)'*(delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(:,1))));
+        % 
+        % ptie_teste_2 = network(i).to_bus(:,end)'*sin(delta_x(angle_index(i)) - delta_x(angle_index(network(i).to_bus(:,1))));
+
+
         Ptie_0 = sum((V_area.^2).*cos(phi)./z_mod + V_area.*V_neighbour.*sin(angle_bus_0 - angle_nei_0 - theta_shift + phi - pi/2)./z_mod);
         
         Ptie = sum((V_area.^2).*cos(phi)./z_mod + V_area.*V_neighbour.*sin(angle_bus - angle_nei - theta_shift + phi - pi/2)./z_mod);
