@@ -36,7 +36,7 @@ network_initial = network;
 
 h = 0.1;
 
-simulation_hours = 1;
+simulation_hours = 10;
 simulation_seconds = 0 + 3600*simulation_hours;
 
 
@@ -74,9 +74,9 @@ teste = Pgen0 - (PL0 + Pt0 );
 
 t_L = 0:h:simulation_seconds;
 
-w = zeros(size(W,2),size(t_L,2));
 
-[w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss,PL0);
+%
+[w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss,PL0,[]);
 
 
 

@@ -5,9 +5,8 @@ close all;
 myDir = pwd; %gets directory
 myFiles = dir(fullfile(myDir,'2022/','*.csv')); %gets all wav files in struct
 
-w_load = zeros(length(myFiles),24*365+1);
-w_load_profile = w_load;
-teste = w_load;
+w_forecast = zeros(length(myFiles),24*365+1);
+w_measured = w_forecast;
 
 
 for j = 1:length(myFiles)
@@ -45,28 +44,25 @@ for j = 1:length(myFiles)
     
     % Resample if needed / Obtain the difference array
     if ts ~= 3600
-        y_meas = resample(y_meas,ts,3600);
-        y_meas = y_meas(1:24*365+1);
 
-
-        y_forecast = resample(y_forecast,ts,3600);
-        y_forecast = y_forecast(1:24*365+1);
-
-        w_load(j,:) = y_forecast;
-
-        teste(j,:) = y_meas;
+        if ts > 3600
+            y_meas = resample(y_meas,ts,3600);
+            y_meas = y_meas(1:24*365+1);
+    
+    
+            y_forecast = resample(y_forecast,ts,3600);
+            y_forecast = y_forecast(1:24*365+1);
+        else
+            y_forecast = y_forecast(1:3600/ts:end);
+            y_meas = y_meas(1:3600/ts:end);
         
-        % y = filter([-1 1],[1 0],y_resampled);
-        % y(1) = 0;
+        end
 
     else
         y_meas = y_meas(1:24*365+1)';
         y_meas = y_meas(1:24*365+1)';
         
         y_forecast = y_forecast(1:24*365+1);
-
-        w_load(j,:) = y_forecast;
-        teste(j,:) = y_meas;
     end
     
 
@@ -83,51 +79,74 @@ for j = 1:length(myFiles)
         mask = circshift(isnan(y_forecast),-1);
         y_forecast(isnan(y_forecast)) = y_forecast(mask);
     end
+    
+    normalization = y_forecast(1);
 
+    y_forecast = y_forecast./normalization;
+    y_meas = y_meas./normalization;
 
-    w_load_profile(j,:) = y_meas'/mean(y_meas);
-    %w_load_profile(j,:) = y_forecast'/y_forecast(1);
+    w_forecast(j,:) = y_forecast;
+    w_measured(j,:) = y_meas;
 
 end
 %%
 
-time_elapsed = size(w_load,2);
+time_elapsed = size(w_forecast,2);
 
 t = 0:3600:(time_elapsed-1)*3600;
 mask = t < 3600*24*1;
 
-figure
-plot(t,w_load)
-xlabel('Time (s)')
-ylabel('Load - pu - Forecast')
-
-
-figure
-plot(t,teste)
-xlabel('Time (s)')
-ylabel('Load - MW - Measured')
-
-%%
-
-
-figure('Position',4*[0 0 2*192 144]); % Nice aspect ratio for double column
+figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
 hold on;
 grid on;
 box on;
 set(gca,'FontSize',20);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
-
-stairs(t(mask),w_load_profile(:,mask)','LineWidth',1.5)
+stairs(t(:,mask),w_forecast(:,mask)','LineWidth',1.5)
 xlabel('Time (s)')
-ylabel('Load - $\frac{measured}{mean(measured)}$','Interpreter','latex')
+ylabel('Load - Forecast')
 hold off;
-% Save figure to .fig and .eps formats
-savefig('Load.fig');
+savefig('forecast.fig');
 set(gcf,'renderer','Painters');
-saveas(gca,'Load.svg','svg');
+saveas(gca,'forecast.eps','epsc');
+
+
+figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+hold on;
+grid on;
+box on;
+set(gca,'FontSize',20);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+stairs(t(:,mask),w_measured(:,mask)','LineWidth',1.5)
+xlabel('Time (s)')
+ylabel('Load  - Measured')
+hold off;
+savefig('measured.fig');
+set(gcf,'renderer','Painters');
+saveas(gca,'measured.eps','epsc');
 
 
 
 
+figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+hold on;
+grid on;
+box on;
+set(gca,'FontSize',20);
+set(gca,'TickLabelInterpreter','latex') % Latex style axis
+stairs(t(:,mask),w_measured(:,mask)' - w_forecast(:,mask)','LineWidth',1.5)
+xlabel('Time (s)')
+ylabel('Load  - Difference')
+savefig('difference.fig');
+set(gcf,'renderer','Painters');
+saveas(gca,'difference.eps','epsc');
 
-save('../../load_profile.mat','w_load_profile')
+
+
+load_.description = "This data is normalized! Hourly data for one year!";
+load_.measured = w_measured;
+load_.forecast = w_measured;
+
+
+
+save('../../load_profile.mat','load_')
