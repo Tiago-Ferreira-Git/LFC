@@ -1,10 +1,5 @@
-function [mpc,n_ren,idx] = get_g(data_file,flag_ren)
-    n_ren = 0;
-    if flag_ren
-        data = load('data\solar.mat');
-        data = data.data;
-        n_ren = size(data.bus,1);
-    end
+function [mpc,n_ren,idx] = get_g(data_file,res_bus)
+
     % 'case118'
     if length(strsplit(data_file,'.mat')) == 2
 
@@ -271,13 +266,30 @@ function [mpc,n_ren,idx] = get_g(data_file,flag_ren)
     mpc.mac_con(:,2) = mpc.gen(:,1);
     
     idx = [];
-    if flag_ren
-    
-        gen_cost_to_add = repmat(mpc.gencost(1,:),size(data.bus,1),1);
+    mpc.isgen = true(size(mpc.gen));
+    mpc.isolar = [];
+
+
+
+    n_ren = size(res_bus,1);
+
+    if (n_ren ~= 0 || size(mpc.bus,1) == 118)
+        if size(mpc.bus,1) == 118
+            load('data\res_profile_118.mat');
+            res_bus = res.bus;
+            n_ren = size(res.bus,1);
+        end
+        gen_cost_to_add = repmat(mpc.gencost(1,:),size(res_bus,1),1);
         
-        gen_to_add = repmat(mpc.gen(1,:),size(data.bus,1),1);
+        gen_to_add = repmat(mpc.gen(1,:),size(res_bus,1),1);
         
-        gen_to_add(:,1) = data.bus;
+        gen_to_add(:,1) = res_bus;
+
+        %Initial Active and Reactive Power
+        gen_to_add(:,2) = 0 ;
+        gen_to_add(:,3) = 0 ;
+
+        gen_to_add(:,6) = 1 ;
     
         %Active power limits
         gen_to_add(:,9) = 0 ;
@@ -289,10 +301,14 @@ function [mpc,n_ren,idx] = get_g(data_file,flag_ren)
         
         [mpc,idx] = addgen2mpc(mpc,gen_to_add, gen_cost_to_add, 'solar');
         
-
+        mask = false(length(mpc.gen(:,1)),1);
+        mask(mpc.isolar) = 1;
+        mpc.isolar_mask = mask;
+        mpc.isgen = ~mpc.isolar_mask;
         %n_res = size(data.bus,1);
 
     end
+
 
 
 end

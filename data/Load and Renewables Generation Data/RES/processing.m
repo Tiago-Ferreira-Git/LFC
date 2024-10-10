@@ -68,9 +68,7 @@ for j = 1:length(myFiles)
 
     else
         y_meas = y_meas(1:24*365+1)';
-        y_meas = y_meas(1:24*365+1)';
-        
-        y_forecast = y_forecast(1:24*365+1);
+        y_forecast = y_forecast(1:24*365+1)';
     end
     
 
@@ -161,7 +159,8 @@ saveas(gca,'difference.eps','epsc');
 
 res.description = "This data is normalized! Hourly data for one year!";
 res.measured = w_measured;
-res.forecast = w_measured;
+res.forecast = w_forecast;
+
 
 
 

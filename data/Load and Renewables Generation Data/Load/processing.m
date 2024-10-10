@@ -145,7 +145,7 @@ saveas(gca,'difference.eps','epsc');
 
 load_.description = "This data is normalized! Hourly data for one year!";
 load_.measured = w_measured;
-load_.forecast = w_measured;
+load_.forecast = w_forecast;
 
 
 

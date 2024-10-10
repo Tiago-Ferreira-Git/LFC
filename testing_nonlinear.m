@@ -8,16 +8,19 @@ opt = mpoption('verbose',0,'out.all',0);
 
 % 
 debug = 2;
-flag_ren = 0;
+flag_ren = 1;
 flag_plot_metrics = 0;
 
 
-[mpc,n_res,idx_initial] = get_g('case14',flag_ren);
+%Column vector with buses
+res_bus = [1;2];
+
+[mpc,n_res,idx_initial] = get_g('case118',res_bus);
 idx = idx_initial;
 mpc = runpf(mpc,opt);
 clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt
 
-n_areas = 3;
+n_areas = 30;
 [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug);
 max(A_c,[],'all')
 network_initial = network;
@@ -36,8 +39,8 @@ network_initial = network;
 
 h = 0.1;
 
-simulation_hours = 10;
-simulation_seconds = 0 + 3600*simulation_hours;
+simulation_hours = 0;
+simulation_seconds = 500 + 3600*simulation_hours;
 
 
 %
@@ -74,9 +77,9 @@ teste = Pgen0 - (PL0 + Pt0 );
 
 t_L = 0:h:simulation_seconds;
 
-
-%
-[w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss,PL0,[]);
+%%
+%(mpc,network,h,n_areas,simulation_seconds,PL0,n_res,res_buses)
+[w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss,PL0);
 
 
 
@@ -137,10 +140,10 @@ end
 % abs(eig(A-B*K*C_))
 
 
-K  = LQROneStepLTI(A,B,diag(q),diag(0.01.*R_ties),E,NaN);
+%K  = LQROneStepLTI(A,B,diag(q),diag(0.01.*R_ties),E,NaN);
 
 
-% K = dlqr(A,B,diag(q),R*eye(size(B,2)));
+K = dlqr(A,B,diag(q),R*eye(size(B,2)));
 
 
 % [K,E_fs] = slow_ss(mpc,network,h,A_c);
