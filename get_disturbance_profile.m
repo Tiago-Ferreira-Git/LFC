@@ -1,36 +1,259 @@
-function [w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(w,h,n_areas,simulation_seconds,bus_ss,PL0)
-    w_load_hour = load('data\w_load.mat');
-    w_load_hour = w_load_hour.w_load(:,1:24);
-    
-    w_ren_hour = load('data\w_ren.mat');
-    w_ren_hour = w_ren_hour.w_ren(:,1:24);
+function [w,w_load,w_res,P_load,P_res,u0] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss,PL0)
+    % w_load__hour = load_('data\w_load_.mat');
+    % w_load__hour = w_load__hour.w_load_(:,1:24);
+    % 
+    % w_res_hour = load_('data\w_res.mat');
+    % w_res_hour = w_res_hour.w_res(:,1:24);
 
-    n_ren = sum(bus_ss(:,4));
+ 
+
+    load('data\load_profile.mat');
+
+    if (size(mpc.bus,1) == 118)
+        load('data\res_profile_118.mat');
+    else
+        load('data\res_profile.mat');
+        max_res = 200;
+        res.forecast = res.forecast*max_res;
+        res.measured = res.measured*max_res;
+        
+    end
+
+
+
+
+    n_res = sum(mpc.isolar_mask);
+
+    % n_res = sum(bus_ss(:,4));
     %if the number of areas in the data available is lower than the areas 
-    if size(w_load_hour,1) < n_areas 
-        w_load_hour = [repmat(w_load_hour, floor(n_areas/size(w_load_hour,1)), 1); ...
-                        w_load_hour(1:mod(n_areas, size(w_load_hour,1)),:)];
+    if size(load_.forecast,1) < length(mpc.bus) 
+        load_.forecast = [repmat(load_.forecast, floor(length(mpc.bus)/size(load_.forecast,1)), 1); ...
+                        load_.forecast(1:mod(length(mpc.bus), size(load_.forecast,1)),:)];
+        load_.measured = [repmat(load_.measured, floor(length(mpc.bus)/size(load_.measured,1)), 1); ...
+                load_.measured(1:mod(length(mpc.bus), size(load_.measured,1)),:)];
     else 
-        w_load_hour = w_load_hour(1:n_areas,:);
+        load_.forecast = load_.forecast(1:length(mpc.bus),:);
+        load_.measured = load_.measured(1:length(mpc.bus),:);
     end
 
-    if size(w_ren_hour,1) < n_ren 
-        w_ren_hour = [repmat(w_ren_hour, floor(n_ren/size(w_ren_hour,1)), 1); ...
-                        w_ren_hour(1:mod(n_ren, size(w_ren_hour,1)),:)];
+    if size(res.forecast,1) < n_res 
+        res.forecast = [repmat(res.forecast, floor(n_res/size(res.forecast,1)), 1); ...
+                        res.forecast(1:mod(n_res, size(res.forecast,1)),:)];
+        res.measured = [repmat(res.measured, floor(n_res/size(res.measured,1)), 1); ...
+                res.measured(1:mod(n_res, size(res.measured,1)),:)];
     else 
-        w_ren_hour = w_ren_hour(1:n_ren,:);
+        res.forecast = res.forecast(1:n_res,:);
+        res.measured = res.measured(1:n_res,:);
     end
+
+
 
     simulation_hours = ceil(simulation_seconds/3600);
+
+
+    n_machines = sum(mpc.isgen);
     
-    %if the hours in the data available is lower than the simulation hour
-    if 24 < simulation_hours 
-        w_load_hour = repmat(w_load_hour,1,floor(simulation_hours/24)+1);
-        w_ren_hour =  repmat(w_ren_hour,1,floor(simulation_hours/24)+1);
-    else            
-        w_load_hour = w_load_hour(:,1:simulation_hours);
-        w_ren_hour = w_ren_hour(:,1:simulation_hours);
+    plots_angles = zeros(size(mpc.bus,1),simulation_hours);
+    plots_p = zeros(n_machines,simulation_hours);
+    plots_p_load = zeros(size(mpc.bus,1),simulation_hours);
+    plots_p_res = zeros(n_res,simulation_hours);
+    plots_tielines = zeros(n_areas,simulation_hours);
+
+    u0 = zeros(n_machines,simulation_hours);
+
+    P_load = zeros(n_areas,simulation_hours);
+    P_res = zeros(n_res,simulation_hours);
+    w_load_hour = zeros(n_areas,simulation_hours);
+    w_res_hour = zeros(n_res,simulation_hours);
+
+    w = zeros(n_areas+n_res,simulation_hours);
+    
+
+    %Test if all load and renewables converge
+    mpc_initial = mpc;
+    for k = 1:simulation_hours
+        load_measured = zeros(size(mpc.bus,1),1);
+        for i = 1:n_areas
+
+            %Increase loads
+            mpc.bus(network(i).bus,3) = mpc_initial.bus(network(i).bus,3).*load_.forecast(network(i).bus,k);
+            load_measured(network(i).bus) = mpc_initial.bus(network(i).bus,3).*load_.measured(network(i).bus,k);
+
+            w_load_hour(i,k) = sum(load_measured(network(i).bus) - mpc.bus(network(i).bus,3))./mpc.baseMVA;
+
+            
+            P_load(i,k) = sum(load_measured(network(i).bus))./mpc.baseMVA;
+
+
+            
+
+            idx = network(i).res_nr;
+            mpc.gen(idx,2) = res.forecast(idx-n_machines,k);
+
+
+            P_res(idx-n_machines,k) = sum(res.forecast(idx-n_machines,k))./mpc.baseMVA;
+
+            w_res_hour(idx-n_machines,k)= sum(res.measured(idx-n_machines,k) - res.forecast(idx-n_machines,k))./mpc.baseMVA;
+
+
+            %Active power limits
+            mpc.gen(idx,9) = mpc.gen(idx,2) + 0.000001 ;
+            mpc.gen(idx,10) = mpc.gen(idx,2) - 0.000001;
+        
+        
+            %Reactive Power Limitis
+            mpc.gen(idx,4) = min(1,res.forecast(idx-n_machines,k)./10)+0.001;
+            mpc.gen(idx,4) = mpc.gen(idx,4);
+        
+            mpc.gen(idx,5) = 0;
+            mpc.gen(idx,5) = mpc.gen(idx,5);
+            
+        end     
+        [mpc,flag] = runopf(mpc,mpoption('verbose',0,'out.all',0));
+        if ~flag
+            error 'Load or Renewables profile made runopf not converge!'
+        end
+
+        [~,u0(:,k),~,~,~]  = initial_conditions(sum(bus_ss(:,2)),n_machines,bus_ss(:,2),network,mpc);
+        
+        plots_angles(:,k) = mpc.bus(:,9);
+        plots_p(:,k) = mpc.gen(mpc.isgen,2);
+        plots_p_load(:,k) = mpc.bus(:,3);
+        plots_p_res(:,k) = mpc.gen(mpc.isolar_mask,2);
+        plots_tielines(:,k) = compute_tielines(mpc,network);
     end
+
+    if simulation_hours > 1
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,deg2rad(plots_angles)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Bus\;angles\;} (\mathrm{rad})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/angles.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/angles.eps','epsc');
+    
+    
+    
+    
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_p','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Generators\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/generator_power.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/generator_power.eps','epsc');
+    
+    
+    
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_p_res','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{RES\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/res_power.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/res_power.eps','epsc');
+    
+    
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_p_load','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        %Save figure to .fig and .eps formats
+        savefig('./fig/load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/load.eps','epsc');
+    
+    
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_tielines','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$T_{i}$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        savefig('./fig/tielines.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/tielines.eps','epsc');
+    
+    
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,w_load_hour'.*mpc.baseMVA,'LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/w_load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/w_load.eps','epsc');
+    
+    
+    
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,w_res_hour'.*mpc.baseMVA,'LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{RES\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        %Save figure to .fig and .eps formats
+        savefig('./fig/w_res.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/w_res.eps','epsc');
+    
+    end
+        
     
 
     load_mask = zeros(1,size(w,1));
@@ -38,23 +261,59 @@ function [w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(w,h,n_areas,sim
     load_mask(cumsum(1+bus_ss(1:end-1,4))+1) = 1;
     load_mask = logical(load_mask);
 
-    ren_mask = ~load_mask;
+    res_mask = ~load_mask;
 
 
-    k_ = 1:3600/h:simulation_hours*3600/h;
-
-    for k=1:simulation_seconds/h + 1
         
-        if ~isempty(find(k == k_, 1))
-            hour = find(k == k_);
+    if simulation_hours > 1
+        u0 = interp1(0:3600:(simulation_hours-1)*3600,u0',0:h:simulation_seconds,'previous');
+        u0 = u0';
+
+
+
+        P_load = interp1(0:3600:(simulation_hours-1)*3600,P_load',0:h:simulation_seconds,'previous');
+        P_load = P_load';
+        if n_res ~= 0
+            
+            P_res = interp1(0:3600:(simulation_hours-1)*3600,P_res',0:h:simulation_seconds,'previous');
+            if (size(P_res,1) ~=1)
+                P_res = P_res';
+            end
         end
-        w(load_mask,k) = w_load_hour(:,hour)*100;
-        w(ren_mask,k) = w_ren_hour(:,hour);
-        
+    
+    
+        w_load = interp1(0:3600:(simulation_hours-1)*3600,w_load_hour',0:h:simulation_seconds,'previous');
+        w_load = w_load';
+    
+        if n_res ~= 0
+            w_res = interp1(0:3600:(simulation_hours-1)*3600,w_res_hour',0:h:simulation_seconds,'previous');
+            if (size(w_res,1) ~=1)
+                w_res = w_res';
+            end
+        end
 
-        %w(load_mask,k_(hour):k_(hour+1)) = repmat(w_load_hour(:,hour),1,3600/h +1).*100;
-        %w(ren_mask,k_(hour):k_(hour+1)) = repmat(w_ren_hour(:,hour),1,3600/h +1);
+    else
+        u0 = repmat(u0,1,simulation_seconds/h +1);
+        P_load = repmat(P_load,1,simulation_seconds/h +1);
+        w_load = repmat(w_load_hour,1,simulation_seconds/h +1);
+        
+        if n_res ~= 0
+            P_res = repmat(P_res,1,simulation_seconds/h +1);
+            w_res = repmat(w_res_hour,1,simulation_seconds/h +1);
+        end
+
+
+    end 
+
+    w = zeros(n_areas+n_res,size(w_load,2));
+
+    w(load_mask,:) = w_load;
+    if n_res ~= 0
+        w(res_mask,:) = w_res;
+    else
+        w_res = [];
     end
+  
     
     % for i = 1:size(w,1)
     % 
@@ -76,112 +335,10 @@ function [w,w_load,w_ren,P_load,P_res] = get_disturbance_profile(w,h,n_areas,sim
     % 
     % end
 
-    w_load = w(load_mask,:);
-    w_ren = w(ren_mask,:);
-    
-
-    t = 0:h:(size(w,2)-1)*h;
-    % figure
-    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    % hold on
-    % grid on
-    % box on;
-    % stairs(t,w(load_mask,:)','LineWidth',1.5);
-    % legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
-    % ylabel('$\Delta P_{load}$ (pu)','interpreter','latex');
-    % xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-    % xticks(0:3600:simulation_hours*3600)
-    % xticklabels(sprintfc('%d', 0:simulation_hours))
-    % hold off
-    % set(gcf,'renderer','Painters');
-    % title='./fig/delta_p_load.png';
-    % saveas(gca,title,'png');
-    % 
-    % 
-    % if(any(ren_mask))
-    %     figure
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     hold on
-    %     grid on
-    %     box on;
-    %     stairs(t,w(ren_mask,:)','LineWidth',1.5);
-    %     legend('$\Delta P_{{ren}_1}$','$\Delta P_{{ren}_2}$','$\Delta P_{{ren}_3}$','Interpreter','latex')
-    %     ylabel('$\Delta P_{ren}$ (pu)','interpreter','latex');
-    %     xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-    %     xticks(0:3600:simulation_hours*3600)
-    %     xticklabels(sprintfc('%d', 0:simulation_hours))
-    %     hold off
-    %     set(gcf,'renderer','Painters');
-    %     title='./fig/p_ren.png';
-    %     saveas(gca,title,'png');
-    % end
-
-
 
     
-    if(any(ren_mask))
-        data = load('data\solar.mat');
-        data = data.data;
-        %data.data(:,2:end) = data.data(:,2:end)./100;
-        if ceil(simulation_seconds/3600) ~= 1
-            P_res = resample(data.data(1:ceil(simulation_seconds/3600),2:end),3600/h,1,'Dimension',1);
-            if size(w_ren,2) < size(P_res,1)
-                P_res = P_res(1:size(w_ren,2),:);
-            else
-                P_res(end+ size(w_ren,2) - size(P_res,1),:) = P_res(end,:);
-            end
-        else
-            P_res = data.data(1,2:end);
-        end
-        
-        %Negative values might be introduced by the resampling
-        mask = P_res < 0;
-        P_res(mask) = 0;
-    
-        P_res = P_res';
-        P_res = P_res + w_ren;
-        
-    else
-        P_res = [];
-    end
-    
-    %w_load = zeros(size(w_load));
-    P_load = PL0+ w_load;
 
 
-    figure
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    hold on
-    grid on
-    box on;
-    stairs(t,P_load','LineWidth',1.5);
-    %legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
-    ylabel('$P_{L}$ (pu)','interpreter','latex');
-    xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-    xticks(0:3600:simulation_hours*3600)
-    xticklabels(sprintfc('%d', 0:simulation_hours))
-    hold off
-    set(gcf,'renderer','Painters');
-    title='./fig/p_load.png';
-    saveas(gca,title,'png');
-
-    if(any(ren_mask))
-        figure
-        set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        hold on
-        grid on
-        box on;
-        stairs(t,P_res','LineWidth',1.5);
-        %legend('$\Delta P_{{load}_1}$','$\Delta P_{{load}_2}$','$\Delta P_{{load}_3}$','Interpreter','latex')
-        ylabel('$P_{RES}$ (pu)','interpreter','latex');
-        xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-        xticks(0:3600:simulation_hours*3600)
-        xticklabels(sprintfc('%d', 0:simulation_hours))
-        hold off
-        set(gcf,'renderer','Painters');
-        title='./fig/p_res.png';
-        saveas(gca,title,'png');
-    end
 
 end
 

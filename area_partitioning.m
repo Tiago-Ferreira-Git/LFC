@@ -20,30 +20,27 @@ function areas = area_partitioning(lines,k,machine_buses)
     
     [V,Eig] = eig(L,"vector");
     %d = eigs(L,3,'lr');
-    [Eig,I] = sort(Eig);
+    [~,I] = sort(Eig);
     V = V(:,I);
 
     j = 0;
     flag = false;
     while ~flag
-        [areas,C] = kmeans(V(:,1:k),k,'Distance','cosine');
+        [areas,~] = kmeans(V(:,1:k),k,'Distance','cosine');
         for i=1:k
             area_bus = find(areas==i);
+
+            %Check if all areas have at least one machine
             if ~any(ismember(area_bus,machine_buses))
-                flag = true;
-                %warning 'At least one area without machines'
                 break
-                %error 'At least one area without machines'
+            end
+            if i == k
+                flag = true;
             end
         end
-
-        if flag == false
-            break
-        end
-        flag = false;
         j = j +1;
-        if j == 3000
-            disp('A 1000 iterations')
+        if rem(j,1000) == 0
+            disp(j)
         end
     end
 

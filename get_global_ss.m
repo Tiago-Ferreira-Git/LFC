@@ -1,9 +1,9 @@
 function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug,network)
     
     base_mva = 100;
-    ren_data = load('data\solar.mat');
-    ren_data = ren_data.data;
-    n_machine = size(mpc.gen,1)-length(ren_data.bus);
+    % ren_data = load('data\solar.mat');
+    % ren_data = ren_data.data;
+    n_machine = sum(mpc.isgen);
     if(nargin <= 4)
         if flag_ren
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:n_machine,1));
@@ -11,6 +11,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
         end
         network = [];
+
+        % mpc.bus(:,7) = areas;
+        % mpc = runpf(mpc,mpoption('verbose',0,'out.all',0));
+
+
         for i = 1:n_areas
             area_bus = find(areas==i);
             network = [network area(area_bus)];
@@ -20,12 +25,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             
         end
         
-        
-        mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
-        mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
+        %
+        mpc.mac_con(:,16) = mpc.mac_con(:,16);
+        %mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
         
     
-        % mpc.tg_con(:,4) = mpc.tg_con(:,4)./4;
+        mpc.tg_con(:,4) = mpc.tg_con(:,4)./10;
 
 
     
@@ -124,7 +129,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     C_mac = [];
     
     if flag_ren 
-        n_res = size(ren_data.bus,1);
+        n_res = size(mpc.gen(mpc.isolar_mask),1);
     else
         n_res = 0;
     end
@@ -135,7 +140,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     s = tf('s');
     n_areas = 1;
     if flag_ren
-        ren_ss = zeros(1,size(ren_data.bus,1));
+        ren_ss = zeros(1,size(mpc.gen(mpc.isolar_mask),1));
     else
         ren_ss = [];
     end
@@ -221,7 +226,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
         
         %Add renewables state
-        mask = ismember(network(i).bus,ren_data.bus);
+        mask = ismember(network(i).bus,mpc.gen(mpc.isolar_mask));
         if any(mask) && flag_ren
             index = size(A_global,1) + size(A,1);
             
