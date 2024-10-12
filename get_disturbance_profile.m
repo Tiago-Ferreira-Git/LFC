@@ -1,4 +1,4 @@
-function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss,PL0)
+function [w,w_load,w_res,P_load,P_res,u0] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss,PL0)
     % w_load__hour = load_('data\w_load_.mat');
     % w_load__hour = w_load__hour.w_load_(:,1:24);
     % 
@@ -59,6 +59,7 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
     plots_p_res = zeros(n_res,simulation_hours);
     plots_tielines = zeros(n_areas,simulation_hours);
 
+    u0 = zeros(n_machines,simulation_hours);
 
     P_load = zeros(n_areas,simulation_hours);
     P_res = zeros(n_res,simulation_hours);
@@ -112,6 +113,8 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         if ~flag
             error 'Load or Renewables profile made runopf not converge!'
         end
+
+        [~,u0(:,k),~,~,~]  = initial_conditions(sum(bus_ss(:,2)),n_machines,bus_ss(:,2),network,mpc);
         
         plots_angles(:,k) = mpc.bus(:,9);
         plots_p(:,k) = mpc.gen(mpc.isgen,2);
@@ -134,9 +137,9 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
-        % savefig('./fig/filename.fig');
-        % set(gcf,'renderer','Painters');
-        % saveas(gca,'./fig/filename.eps','epsc');
+        savefig('./fig/angles.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/angles.eps','epsc');
     
     
     
@@ -154,9 +157,9 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
-        % savefig('./fig/filename.fig');
-        % set(gcf,'renderer','Painters');
-        % saveas(gca,'./fig/filename.eps','epsc');
+        savefig('./fig/generator_power.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/generator_power.eps','epsc');
     
     
     
@@ -169,13 +172,13 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         stairs(1:simulation_hours,plots_p_res','LineWidth',1.5);
         % legend({'Temperature of agent $\nu_1$'},...
 	    %     'Location','best','Interpreter','latex');
-        ylabel('$\mathrm{Generators\;Power\;RES\;} (\mathrm{MW})$','Interpreter','latex');
+        ylabel('$\mathrm{RES\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
-        % savefig('./fig/filename.fig');
-        % set(gcf,'renderer','Painters');
-        % saveas(gca,'./fig/filename.eps','epsc');
+        savefig('./fig/res_power.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/res_power.eps','epsc');
     
     
         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -190,10 +193,10 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         ylabel('$\mathrm{Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
-        % Save figure to .fig and .eps formats
-        % savefig('./fig/filename.fig');
-        % set(gcf,'renderer','Painters');
-        % saveas(gca,'./fig/filename.eps','epsc');
+        %Save figure to .fig and .eps formats
+        savefig('./fig/load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/load.eps','epsc');
     
     
         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -208,6 +211,9 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         ylabel('$T_{i}$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
+        savefig('./fig/tielines.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/tielines.eps','epsc');
     
     
         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -216,16 +222,16 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,w_load_hour','LineWidth',1.5);
+        stairs(1:simulation_hours,w_load_hour'.*mpc.baseMVA,'LineWidth',1.5);
         % legend({'Temperature of agent $\nu_1$'},...
 	    %     'Location','best','Interpreter','latex');
-        ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{pu})$','Interpreter','latex');
+        ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
-        % savefig('./fig/filename.fig');
-        % set(gcf,'renderer','Painters');
-        % saveas(gca,'./fig/filename.eps','epsc');
+        savefig('./fig/w_load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/w_load.eps','epsc');
     
     
     
@@ -235,16 +241,16 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,w_res_hour','LineWidth',1.5);
+        stairs(1:simulation_hours,w_res_hour'.*mpc.baseMVA,'LineWidth',1.5);
         % legend({'Temperature of agent $\nu_1$'},...
 	    %     'Location','best','Interpreter','latex');
-        ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{pu})$','Interpreter','latex');
+        ylabel('$\mathrm{RES\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
-        % Save figure to .fig and .eps formats
-        % savefig('./fig/filename.fig');
-        % set(gcf,'renderer','Painters');
-        % saveas(gca,'./fig/filename.eps','epsc');
+        %Save figure to .fig and .eps formats
+        savefig('./fig/w_res.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/w_res.eps','epsc');
     
     end
         
@@ -260,34 +266,53 @@ function [w,w_load,w_res,P_load,P_res] = get_disturbance_profile(mpc,network,h,n
 
         
     if simulation_hours > 1
-        P_load = interp1(1:simulation_hours,P_load',0:h:simulation_seconds,'previous');
+        u0 = interp1(0:3600:(simulation_hours-1)*3600,u0',0:h:simulation_seconds,'previous');
+        u0 = u0';
+
+
+
+        P_load = interp1(0:3600:(simulation_hours-1)*3600,P_load',0:h:simulation_seconds,'previous');
         P_load = P_load';
+        if n_res ~= 0
+            
+            P_res = interp1(0:3600:(simulation_hours-1)*3600,P_res',0:h:simulation_seconds,'previous');
+            if (size(P_res,1) ~=1)
+                P_res = P_res';
+            end
+        end
     
     
-        P_res = interp1(1:simulation_hours,P_res',0:h:simulation_seconds,'previous');
-        P_res = P_res';
-    
-    
-        w_load = interp1(1:simulation_hours,w_load_hour',0:h:simulation_seconds,'previous');
+        w_load = interp1(0:3600:(simulation_hours-1)*3600,w_load_hour',0:h:simulation_seconds,'previous');
         w_load = w_load';
     
-    
-        w_res = interp1(1:simulation_hours,w_res_hour',0:h:simulation_seconds,'previous');
-        w_res = w_res';
+        if n_res ~= 0
+            w_res = interp1(0:3600:(simulation_hours-1)*3600,w_res_hour',0:h:simulation_seconds,'previous');
+            if (size(w_res,1) ~=1)
+                w_res = w_res';
+            end
+        end
 
-    else 
+    else
+        u0 = repmat(u0,1,simulation_seconds/h +1);
         P_load = repmat(P_load,1,simulation_seconds/h +1);
-        P_res = repmat(P_res,1,simulation_seconds/h +1);
         w_load = repmat(w_load_hour,1,simulation_seconds/h +1);
-        w_res = repmat(w_res_hour,1,simulation_seconds/h +1);
+        
+        if n_res ~= 0
+            P_res = repmat(P_res,1,simulation_seconds/h +1);
+            w_res = repmat(w_res_hour,1,simulation_seconds/h +1);
+        end
 
 
     end 
 
-    w = zeros(n_areas+n_res,size(w_res,2));
+    w = zeros(n_areas+n_res,size(w_load,2));
 
     w(load_mask,:) = w_load;
-    w(res_mask,:) = w_res;
+    if n_res ~= 0
+        w(res_mask,:) = w_res;
+    else
+        w_res = [];
+    end
   
     
     % for i = 1:size(w,1)

@@ -68,17 +68,8 @@ for j = 1:length(myFiles)
 
     %Substituting the Nan Values by their preceding one 
 
-
-    while(any(isnan(y_meas)))
-         mask = circshift(isnan(y_meas),-1);
-         y_meas(isnan(y_meas)) = y_meas(mask);
-    end
-
-
-    while(any(isnan(y_forecast)))            
-        mask = circshift(isnan(y_forecast),-1);
-        y_forecast(isnan(y_forecast)) = y_forecast(mask);
-    end
+    y_forecast = fillmissing(y_forecast,'previous');
+    y_meas =  fillmissing(y_meas,'previous');
     
     normalization = y_forecast(1);
 
@@ -108,7 +99,7 @@ ylabel('Load - Forecast')
 hold off;
 savefig('forecast.fig');
 set(gcf,'renderer','Painters');
-saveas(gca,'forecast.eps','epsc');
+saveas(gca,'load_forecast.eps','epsc');
 
 
 figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -123,7 +114,7 @@ ylabel('Load  - Measured')
 hold off;
 savefig('measured.fig');
 set(gcf,'renderer','Painters');
-saveas(gca,'measured.eps','epsc');
+saveas(gca,'load_measured.eps','epsc');
 
 
 
@@ -136,10 +127,10 @@ set(gca,'FontSize',20);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 stairs(t(:,mask),w_measured(:,mask)' - w_forecast(:,mask)','LineWidth',1.5)
 xlabel('Time (s)')
-ylabel('Load  - Difference')
+ylabel('Normalized Load Difference')
 savefig('difference.fig');
 set(gcf,'renderer','Painters');
-saveas(gca,'difference.eps','epsc');
+saveas(gca,'load_difference.eps','epsc');
 
 
 

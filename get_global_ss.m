@@ -11,6 +11,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(:,1));
         end
         network = [];
+
+        % mpc.bus(:,7) = areas;
+        % mpc = runpf(mpc,mpoption('verbose',0,'out.all',0));
+
+
         for i = 1:n_areas
             area_bus = find(areas==i);
             network = [network area(area_bus)];
@@ -20,12 +25,12 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             
         end
         
-        
-        mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
-        mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
+        %
+        mpc.mac_con(:,16) = mpc.mac_con(:,16);
+        %mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
         
     
-        % mpc.tg_con(:,4) = mpc.tg_con(:,4)./4;
+        mpc.tg_con(:,4) = mpc.tg_con(:,4)./10;
 
 
     

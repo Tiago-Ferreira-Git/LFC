@@ -266,8 +266,9 @@ function [mpc,n_ren,idx] = get_g(data_file,res_bus)
     mpc.mac_con(:,2) = mpc.gen(:,1);
     
     idx = [];
-    mpc.isgen = true(size(mpc.gen));
+    mpc.isgen = true(size(mpc.gen,1),1);
     mpc.isolar = [];
+    mpc.isolar_mask = false(size(mpc.gen,1),1);
 
 
 
