@@ -26,11 +26,11 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         end
         
         %
-        mpc.mac_con(:,16) = mpc.mac_con(:,16);
+        % mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
         %mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
         
     
-        mpc.tg_con(:,4) = mpc.tg_con(:,4)./10;
+        mpc.tg_con(:,4) = mpc.tg_con(:,4)./5;
 
 
     
@@ -69,6 +69,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             %network(j).damping = network(j).damping/network(j).machines;
             network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100); 
             network(j).inertia = network(j).inertia/network(j).machines;
+            network(j).bias_factor =  network(j).damping + network(j).tg_con(1,4);
             %network(j).tg_con(:,4) = 0;
             %network(j).freq_feedback(:) = 0;
         end
@@ -177,6 +178,17 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             B_mech = [0 0 1/c ]';
 
             C_mech = [1 d e];
+            [num,dem] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))
+
+            %Alternatine mechanical state representation
+
+            A_mech_2 = [-1 0 0; 1/Tc -1/Tc 0; 0 1/T5 -1/T5];
+
+            B_mech_2 = [1/Ts 0 0 ]';
+
+            C_mech_2 = [1/(Tc*T5) ((T3+T4)/T5 - T5^(-2) - 1/(Tc*Ts)) (1 - (T3+T4)/T5 + T5^(-2) )]
+
+             [num2,dem2] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))   
 
             %%Applying machine loss faults
             if( Ts == 0 && Tc == 0 && T3 == 0 && T4 == 0 && T5 == 0 )
@@ -259,9 +271,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %Add error integrator 
         A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
         if debug == 1
-            A(end,1) = -1; 
+            A(end,1) = 1; 
         else
-            A(end,1) = -2*pi*60;
+            A(end,1) = 2*pi*60;
         end
         B = [B; zeros(1,size(B,2))];
 
@@ -290,15 +302,20 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         
 
 
-        C = zeros(3,size(A,1));
+        C = zeros(4,size(A,1));
 
         C(1,1) = 1;
+
+        %Mechanical output
         C(2,:) = [0 C_area zeros(1,size(A,1)-size(C_area,2)-1)];
-        %C(3,end) = 1;
-        C(3,end) = -1;
 
+        %Angle
+        C(3,end) = 1;
+        %Tie-line Deviations
+        %C(4,end) = -1;
+        
         network(i).C_mech = C(2,:);
-
+        
         network(i).W = W;
         
         
@@ -334,7 +351,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
     L = zeros(size(B_global,2),n_areas);
     index_ss = cumsum(bus_ss(:,2))+1;
     index_ss = [1 ; index_ss];
-    C_index = 3:4:size(C_global,1);
+    C_index = 4:4:size(C_global,1);
     tg_size = cumsum([ 1 ; bus_ss(:,3)]);
     %tg_size = [1 ; tg_size];
     for i = 1:size(network,2)
@@ -345,21 +362,27 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         E(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         E_fs(tg_size(i):tg_size(i+1)-1,index_ss(i):index_ss(i+1)-1) = ones(bus_ss(i,3),bus_ss(i,2));
         T_i = 0;
+
+
+        z_mod = network(i).to_bus(:,5);
+
+        V_area = mpc.bus(network(i).to_bus(:,2),8);
+        V_neighbour = mpc.bus(network(i).to_bus(:,3),8);
+
+        Tij = V_area.*V_neighbour.*cos(bus_sol(network(i).to_bus(:,2)) - bus_sol(network(i).to_bus(:,3)))./z_mod;
+        % Tij = Tij./(2*pi*60);
+        network(i).to_bus = [network(i).to_bus Tij];
+
+
         for j = 1:size(neighbours,1)
-            
-            if debug == 1
-                T_ji = 2*pi*60*cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5)); 
-            else
-                T_ji = cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
-            end
 
-            % T_ji =  T_ji/10000;
+            %V_area(j).*V_neighbour(j).*
 
-            %Default
-            %A_global(index_ss(i+1)-1, index_ss(neighbours(j,1))) =  A_global(index_ss(i+1)-1, index_ss(neighbours(j,1)) ) -T_ji;
+            T_ji =  cos(bus_sol(neighbours(j,3)) - bus_sol(neighbours(j,2)))/(neighbours(j,5));
+       
             
             %Changin ptie for error integral
-            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) -T_ji/network(i).inertia;
+            A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) =  A_global(index_ss(i), index_ss(neighbours(j,1)+1)-1) +T_ji/network(i).inertia;
             
 
             E(tg_size(i):tg_size(i+1)-1,index_ss(neighbours(j,1)):index_ss(neighbours(j,1)+1)-1) = ones(bus_ss(i,3),bus_ss(neighbours(j,1),2));
@@ -370,7 +393,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             T_i =  T_i + T_ji;
 
-            %C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
+            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) +T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);
@@ -380,9 +403,9 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %Default
         %A_global(index_ss(i+1)-1, index_ss(i) ) = T_i;
         
-        A_global(index_ss(i), index_ss(i+1)-1) = T_i/network(i).inertia;
+        A_global(index_ss(i), index_ss(i+1)-1) = -T_i/network(i).inertia;
         k_ties(i) = T_i;
-        %C_global(C_index(i),index_ss(i+1)-1) = T_i;
+        C_global(C_index(i),index_ss(i+1)-1) = T_i;
 
     end
 

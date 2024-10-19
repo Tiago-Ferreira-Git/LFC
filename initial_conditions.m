@@ -39,8 +39,7 @@ function [x0,u0,Pt0,PL0,Ploss] = initial_conditions(ss_dim,n_machines,bus_ss,net
         j = j+network(i).machines;
 
         x0(angle_index(i)) =  0;
-        %PL0(i) = sum(mpc.gen(network(i).mac_nr,2)./100);
-
+       
         PL0(i) = sum(mpc.bus(network(i).bus,3)./100);
         
         mask_outside_area = bitxor(ismember(mpc.branch(:,1),network(i).bus),ismember(mpc.branch(:,2),network(i).bus));

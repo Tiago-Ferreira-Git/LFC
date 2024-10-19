@@ -1,4 +1,4 @@
-function [mpc,n_ren,idx] = get_g(data_file,res_bus)
+function [mpc,n_ren,idx] = get_g(data_file,res_bus,flag_ren)
 
     % 'case118'
     if length(strsplit(data_file,'.mat')) == 2
@@ -274,7 +274,7 @@ function [mpc,n_ren,idx] = get_g(data_file,res_bus)
 
     n_ren = size(res_bus,1);
 
-    if (n_ren ~= 0 || size(mpc.bus,1) == 118)
+    if (n_ren ~= 0 || (size(mpc.bus,1) == 118 && flag_ren))
         if size(mpc.bus,1) == 118
             load('data\res_profile_118.mat');
             res_bus = res.bus;

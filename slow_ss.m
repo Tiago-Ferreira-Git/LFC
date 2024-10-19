@@ -1,4 +1,4 @@
-function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
+function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig,Pmech0)
     
 
     %% Generate the ss for each area
@@ -33,7 +33,7 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
         A(1,1) = (sum_area - network(i).damping)/network(i).inertia;
 
         %Add error integrator 
-        A(end,1) = -2*pi*60;
+        A(end,1) = 2*pi*60;
 
         W = zeros(2,1);
 
@@ -79,7 +79,7 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
             neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
 
             %Changin ptie for error integral
-            A_global(2*i-1, neigbour_index(end)) =  A_global(2*i-1, neigbour_index(end)) -T_ji/network(i).inertia;
+            A_global(2*i-1, neigbour_index(end)) =  A_global(2*i-1, neigbour_index(end)) +T_ji/network(i).inertia;
             
             
             
@@ -89,20 +89,20 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
             T_i =  T_i + T_ji;
         end
         
-        A_global(2*i-1, i*2) = T_i/network(i).inertia;
+        A_global(2*i-1, i*2) = -T_i/network(i).inertia;
         k_ties(i) = T_i;
     end
-    % 
-    % 
-    % figure
-    % hold on
-    % title("Reduced vs Original Model poles")
-    % plot(real(eig(A_teste)),imag(eig(A_teste)),'x')
-    % plot(real(eig(A_global)),imag(eig(A_global)),'x')
-    % legend({'Original','Reduced'},'Location','best')
-    % hold off
-    % 
-    % 
+
+
+    figure
+    hold on
+    title("Reduced vs Original Model poles")
+    plot(real(eig(A_orig)),imag(eig(A_orig)),'x')
+    plot(real(eig(A_global)),imag(eig(A_global)),'x')
+    legend({'Original','Reduced'},'Location','best')
+    hold off
+
+
     figure
     hold on
     title("Reduced vs Original Model poles zoomed")
@@ -122,44 +122,10 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
     q(1:2:end) = 10.*k_ties;
     q(2:2:end) = 0.1.*k_ties;
     % 
-    % q(1:2:end) = 10;
-    % q(2:2:end) = 1;
+    q(1:2:end) = 10;
+    q(2:2:end) = 100;
 
-    
-    
-    E_to = zeros(size(E));
-
-
-    for i = 1:size(network,2)
-
-
-        neighbours = network(i).to_bus;
-
-        E_to(tg_size(i):tg_size(i+1)-1,i*2-1:i*2) = ones(network(i).machines,2);
-
-
-        unique_areas = unique(network(i).to_bus(:,1),'rows');
-
-
-        for j = unique_areas'
-            neighbours = [neighbours ; network(j).to_bus];
-        end
-
-        % % Third order neighbours
-        % unique_areas = unique(neighbours(:,1),'rows');
-        % 
-        % for j = unique_areas'
-        %     neighbours = [neighbours ; network(j).to_bus];
-        % end
-
-
-        for j = 1:size(neighbours,1)
-            neigbour_index = neighbours(j,1)*2-1:neighbours(j,1)*2;
-            E_to(tg_size(i):tg_size(i+1)-1,neigbour_index) = ones(network(i).machines,2);
-        end
-
-    end
-
+   
 
 
     R_ties = zeros(1,size(B,2));
@@ -185,8 +151,10 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig)
 
     %K = LQROneStepLTI_augmented(A1_hat,Bg1_hat,Q,R,E,300e3,1e-8,A,B,r,Z,T);
 
-
-    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),diag(1e5.*R_ties),E,NaN);
+    %diag(1e2.*R_ties)
+    % Pmech0 = C_mech*x0+1e-1;
+    % % R = diag(R_./Pmech0);
+    [K,~,trace_records] = LQROneStepLTI(A,B,diag(q),1e5*eye(size(B,2)),E,NaN);
     figure
     plot(trace_records(trace_records>0))
     xlabel('Iterations')

@@ -6,6 +6,7 @@ classdef area
     properties
         inertia
         damping
+        bias_factor
         machines
         tg_con
         tg_sig
@@ -39,6 +40,8 @@ classdef area
             obj.damping = 0;
             % 
             obj.machines = 0;
+
+            obj.bias_factor = 0;
             % 
             % 
             obj.tg_con = [];
