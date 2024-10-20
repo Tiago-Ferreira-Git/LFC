@@ -23,20 +23,32 @@ function [x0,u0,Pt0,PL0,Ploss] = initial_conditions(ss_dim,n_machines,bus_ss,net
     %%
     for i = 1:length(network)
         
-        gen_index = freq_index(i)+1:freq_index(i+1)-2;
+        %gen_index = freq_index(i)+1:freq_index(i+1)-2;
     
-        x0_gen = zeros(network(i).machines*3+network(i).res,1);
+        %x0_gen = zeros(network(i).machines*3+network(i).res,1);
         
-    
-        x0_gen(1:3:3*(network(i).machines)) = repelem(mpc.gen(network(i).mac_nr,2)./mpc.baseMVA,1,1);
-        n = 3*network(i).machines;
-        if network(i).res ~= 0
-            x0_gen(n+1:1: n+ network(i).res) = mpc.gen(network(i).res_nr,2)./mpc.baseMVA;
+        output = sum(network(i).C,2);
+        %u0 = zeros(network(i).machines)
+        for j = 1:network(i).machines
+            
+            u0(network(i).u_index(j)) = mpc.gen(network(i).mac_nr(j),2)./(mpc.baseMVA.*output(j));
+
+
+            x0(network(i).mec_index(1+(j-1)*3:j*3)) = u0(network(i).u_index(j)) ;
         end
-        x0(gen_index) = x0_gen;
-        x0(angle_index(i)) =  deg2rad(mean(mpc.bus(network(i).mac_nr,9)));
-        u0(j:j+network(i).machines-1) = mpc.gen(network(i).mac_nr,2)./mpc.baseMVA;
-        j = j+network(i).machines;
+
+    
+        
+        
+        
+        %n = 3*network(i).machines;
+        if network(i).res ~= 0
+            x0(network(i).res_index) = mpc.gen(network(i).res_nr,2)./mpc.baseMVA;
+        end
+        %x0(gen_index) = x0_gen;
+        %x0(angle_index(i)) =  deg2rad(mean(mpc.bus(network(i).mac_nr,9)));
+        
+        
 
         x0(angle_index(i)) =  0;
        

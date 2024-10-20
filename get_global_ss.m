@@ -178,17 +178,24 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             B_mech = [0 0 1/c ]';
 
             C_mech = [1 d e];
-            [num,dem] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))
+            [num,dem] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)));
+
+            % tf(num,dem)
 
             %Alternatine mechanical state representation
 
-            A_mech_2 = [-1 0 0; 1/Tc -1/Tc 0; 0 1/T5 -1/T5];
+            A_mech = [-1/Ts  0 0; 1/Tc -1/Tc 0; 0 1/T5 -1/T5];
 
-            B_mech_2 = [1/Ts 0 0 ]';
+            B_mech = [1/Ts 0 0 ]';
 
-            C_mech_2 = [1/(Tc*T5) ((T3+T4)/T5 - T5^(-2) - 1/(Tc*Ts)) (1 - (T3+T4)/T5 + T5^(-2) )]
+            b = e;
+            a = d;
 
-             [num2,dem2] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))   
+            C_mech = [b/(Tc*T5) (a/T5 - b*T5^(-2) - b/(Tc*Ts)) (1 - a/T5 + b*T5^(-2) )];
+
+            [num2,dem2] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)));
+
+            % tf(num2,dem2)
 
             %%Applying machine loss faults
             if( Ts == 0 && Tc == 0 && T3 == 0 && T4 == 0 && T5 == 0 )
@@ -202,7 +209,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
                 machine_ss = [machine_ss ; (n:n+3-1)' ones(3,1).*n_machines];
             end
             
-            network(i).freq_feedback(j) = network(i).tg_con(j,4)/c;
+            network(i).freq_feedback(j) = network(i).tg_con(j,4)/Ts;
            
             A_area = [A_area zeros(size(A_area,1),size(A_mech,2)) ; zeros(size(A_mech,1),size(A_area,2)) A_mech];
             B_area = [B_area zeros(size(B_area,1),size(B_mech,2)) ; zeros(size(B_mech,1),size(B_area,2)) B_mech];
@@ -224,7 +231,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         B_freq = 1/network(i).inertia;
         
         freq_feedback = zeros(size(B_area,1),1);
-        freq_feedback(3:3:end) = -network(i).freq_feedback;
+        freq_feedback(1:3:end) = -network(i).freq_feedback;
         
         A = [A_freq B_freq.*C_area ; freq_feedback A_area];
 
@@ -315,6 +322,8 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         %C(4,end) = -1;
         
         network(i).C_mech = C(2,:);
+
+        network(i).C = C_mac_area;
         
         network(i).W = W;
         
