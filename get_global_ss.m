@@ -26,7 +26,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
         end
         
         %
-        % mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
+        mpc.mac_con(:,16) = mpc.mac_con(:,16).*mpc.mac_con(:,3)/base_mva;
         %mpc.mac_con(:,17) = mpc.mac_con(:,17).*mpc.mac_con(:,3)/base_mva;
         
     
@@ -178,17 +178,17 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             B_mech = [0 0 1/c ]';
 
             C_mech = [1 d e];
-            [num,dem] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))
-
-            %Alternatine mechanical state representation
-
-            A_mech_2 = [-1 0 0; 1/Tc -1/Tc 0; 0 1/T5 -1/T5];
-
-            B_mech_2 = [1/Ts 0 0 ]';
-
-            C_mech_2 = [1/(Tc*T5) ((T3+T4)/T5 - T5^(-2) - 1/(Tc*Ts)) (1 - (T3+T4)/T5 + T5^(-2) )]
-
-             [num2,dem2] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))   
+            % [num,dem] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))
+            % 
+            % %Alternatine mechanical state representation
+            % 
+            % A_mech_2 = [-1 0 0; 1/Tc -1/Tc 0; 0 1/T5 -1/T5];
+            % 
+            % B_mech_2 = [1/Ts 0 0 ]';
+            % 
+            % C_mech_2 = [1/(Tc*T5) ((T3+T4)/T5 - T5^(-2) - 1/(Tc*Ts)) (1 - (T3+T4)/T5 + T5^(-2) )]
+            % 
+            %  [num2,dem2] = ss2tf(A_mech,B_mech,C_mech,zeros(size(C_mech,1),size(B_mech,2)))   
 
             %%Applying machine loss faults
             if( Ts == 0 && Tc == 0 && T3 == 0 && T4 == 0 && T5 == 0 )

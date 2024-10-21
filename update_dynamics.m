@@ -1,80 +1,97 @@
-function [mpc,A,B,C,D,W,machine_ss,ktie] = update_dynamics(mpc,network,flag_ren,hour,h,Pmech)
+function [K] = update_dynamics(mpc,network,flag_ren,h,n_areas,simulation_seconds,k,Q,R,E)
 
-    data = load('data\solar.mat');
-    data = data.data;
+    % w_load__hour = load_('data\w_load_.mat');
+    % w_load__hour = w_load__hour.w_load_(:,1:24);
+    % 
+    % w_res_hour = load_('data\w_res.mat');
+    % w_res_hour = w_res_hour.w_res(:,1:24);
 
+ 
 
-    % bus_index = 1:4:size(mpc.bus,1);
+    load('data\load_profile.mat');
 
-
-    x = 0:24;
-    
-    warning 'You have to change the code to compute idx'
-    idx = 55:68;
-
-    for i = 1:length(network)
-        mpc.gen(network(i).mac_nr,2) = Pmech(network(i).mac_nr)*100;
-
-        % mask = ismember( mpc.bus(:,1),network(i).bus);
-
-        %increments in load conditions
-        %mpc.bus(mask,3) = mpc.bus(mask,3) + w_load(i,k-100)./length(network(1).bus);
-        % 
-        % if(y_increment(3*i) > 0)
-        %     mpc.bus(mask,9) = mpc.bus(mask,9) + rem(rad2deg(y_increment(3*i)),180);
-        % else
-        %     mpc.bus(mask,9) = mpc.bus(mask,9) + rem(rad2deg(y_increment(3*i)),-180);
-        % end
-
+    if (size(mpc.bus,1) == 118)
+        load('data\res_profile_118.mat');
+    else
+        load('data\res_profile.mat');
+        max_res = 200;
+        res.forecast = res.forecast*max_res;
+        res.measured = res.measured*max_res;
+        
     end
 
+
+
+
+    n_res = sum(mpc.isolar_mask);
+
+    % n_res = sum(bus_ss(:,4));
+    %if the number of areas in the data available is lower than the areas 
+    if size(load_.forecast,1) < length(mpc.bus) 
+        load_.forecast = [repmat(load_.forecast, floor(length(mpc.bus)/size(load_.forecast,1)), 1); ...
+                        load_.forecast(1:mod(length(mpc.bus), size(load_.forecast,1)),:)];
+        load_.measured = [repmat(load_.measured, floor(length(mpc.bus)/size(load_.measured,1)), 1); ...
+                load_.measured(1:mod(length(mpc.bus), size(load_.measured,1)),:)];
+    else 
+        load_.forecast = load_.forecast(1:length(mpc.bus),:);
+        load_.measured = load_.measured(1:length(mpc.bus),:);
+    end
+
+    if size(res.forecast,1) < n_res 
+        res.forecast = [repmat(res.forecast, floor(n_res/size(res.forecast,1)), 1); ...
+                        res.forecast(1:mod(n_res, size(res.forecast,1)),:)];
+        res.measured = [repmat(res.measured, floor(n_res/size(res.measured,1)), 1); ...
+                res.measured(1:mod(n_res, size(res.measured,1)),:)];
+    else 
+        res.forecast = res.forecast(1:n_res,:);
+        res.measured = res.measured(1:n_res,:);
+    end
+
+
+
+    simulation_hours = ceil(simulation_seconds/3600);
+
+
+    n_machines = sum(mpc.isgen);
+
     
-    % nominal_load_p_increase_profile = (gaussmf(x,[4 12])*1);
-    % nominal_load_q_increase_profile = (gaussmf(x,[4 12])*1);
-    
-    if flag_ren
-        %Active power
-        mpc.gen(idx,2) = data.data(hour,2:end)';
-        mpc.gen(idx,2) = mpc.gen(idx,2)*mpc.baseMVA;
-    
+
+    %Test if all load and renewables converge
+    mpc_initial = mpc;
+    for i = 1:n_areas
+
+        %Change loads
+        %mpc_initial.bus(network(i).bus,3).*load_.forecast(network(i).bus,k);
+        mpc.bus(network(i).bus,3) = mpc_initial.bus(network(i).bus,3).*load_.forecast(network(i).bus,k);
+        load_measured(network(i).bus) = mpc_initial.bus(network(i).bus,3).*load_.measured(network(i).bus,k);     
+        
+
+        idx = network(i).res_nr;
+        mpc.gen(idx,2) = res.forecast(idx-n_machines,k);
+
         %Active power limits
         mpc.gen(idx,9) = mpc.gen(idx,2) + 0.000001 ;
         mpc.gen(idx,10) = mpc.gen(idx,2) - 0.000001;
     
     
         %Reactive Power Limitis
-        mpc.gen(idx,4) = min(1,data.data(hour,2:end)'./10)+0.001;
-        mpc.gen(idx,4) = mpc.gen(idx,4)*mpc.baseMVA;
+        mpc.gen(idx,4) = min(1,res.forecast(idx-n_machines,k)./10)+0.001;
+        mpc.gen(idx,4) = mpc.gen(idx,4);
     
         mpc.gen(idx,5) = 0;
-        mpc.gen(idx,5) = mpc.gen(idx,5)*mpc.baseMVA;
-    end
-
-    % mpc.bus(bus_index, 3) = mpc_initial.bus(bus_index, 3) *(1 + nominal_load_p_increase_profile(mod(hour,24)+1));
-    % mpc.bus(bus_index, 4) = mpc_initial.bus(bus_index, 4) *(1 + nominal_load_q_increase_profile(mod(hour,24)+1));
-    
-
+        mpc.gen(idx,5) = mpc.gen(idx,5);
+        
+    end     
     [mpc,flag] = runopf(mpc,mpoption('verbose',0,'out.all',0));
     if ~flag
-        error 'Power Flow did not converge.'
+        error 'Load or Renewables profile made runopf not converge!'
     end
+    debug = 2;
 
-    n_areas = size(network,2);
-    warning 'Change this debug flag please'
-    [A,B,C,D,W,machine_ss,~,~,~,~,~,~,~] = get_global_ss(mpc,n_areas,flag_ren,2,network);
+    [A_c,B_c,~,~,W_c,~,~,~,~,~,~,~,~,~,~] = get_global_ss(mpc,n_areas,flag_ren,debug,network);
+    [A,B,~] = discrete_dynamics(A_c,B_c,W_c,h);
+    %[K,~,trace_records]  = LQROneStepLTI(A,B,Q,R,E,NaN);
+    K = dlqr(A,B,Q,R);
 
-    [A,B,W] = discrete_dynamics(A,B,W,h);
-    
-
-    %ktie with C
-    ktie = zeros(1,size(network,2));
-    % rows = 3:4:size(C,1);
-    % cols = cumsum(bus_ss(:,2));
-    % for i = 1:size(network,2)
-    %     ktie(i) = C(rows(i),cols(i));
-    % end
+        
 end
-
-
-
-

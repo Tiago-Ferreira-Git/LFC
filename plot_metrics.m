@@ -12,36 +12,36 @@ function  plot_metrics(n_areas,n_machines,simulation_hours,network,t,u,x,y,h,fre
 
     %Time settling - defined as the time unde 1e-5 freq
 
-    time_settling  = zeros(1,n_areas);
-
-    %Frequency limits in pu
-    freq_lim = 2e-6;
-    %time transient to ignore in seconds
-    t_transient = 100;
-    for i =1:n_areas
-        %find the first time where delta_freq was under 1e-5pu
-
-        index = find(abs((y((i-1)*4+1,:)-1)) < freq_lim);
-        
-        mask = find(t >= t_transient);
-        mask = mask(1);
-        %Ignore initial transient
-        mask = index > mask;
-        index(~mask) = [];
-
-        for j = 1:length(index)- round(5/h)
-            if(index(j+round(5/h)) - index(j) == round(5/h))
-                index = index(j);
-                break
-            end
-        end
-        
-        if length(index) ~=1
-            error "Could not find time settling"
-        end
-
-        time_settling(i) = t(index);
-    end
+    % time_settling  = zeros(1,n_areas);
+    % 
+    % %Frequency limits in pu
+    % freq_lim = 2e-6;
+    % %time transient to ignore in seconds
+    % t_transient = 100;
+    % for i =1:n_areas
+    %     %find the first time where delta_freq was under 1e-5pu
+    % 
+    %     index = find(abs((y((i-1)*4+1,:)-1)) < freq_lim);
+    % 
+    %     mask = find(t >= t_transient);
+    %     mask = mask(1);
+    %     %Ignore initial transient
+    %     mask = index > mask;
+    %     index(~mask) = [];
+    % 
+    %     for j = 1:length(index)- round(5/h)
+    %         if(index(j+round(5/h)) - index(j) == round(5/h))
+    %             index = index(j);
+    %             break
+    %         end
+    %     end
+    % 
+    %     if length(index) ~=1
+    %         error "Could not find time settling"
+    %     end
+    % 
+    %     time_settling(i) = t(index);
+    % end
 
 
     figure; 
