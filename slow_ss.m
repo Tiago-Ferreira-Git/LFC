@@ -8,6 +8,9 @@ function [K,E_fs,A,B,W] = slow_ss(mpc,network,h,A_orig,Pmech0)
     B_global = [];
     W_global = [];
 
+    % for i=1:length(network)
+    %     network(i).tg_con(:,4) = 0;
+    % end
     
     for i=1:length(network)
         

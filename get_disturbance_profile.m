@@ -13,7 +13,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         load('data\res_profile_118.mat');
     else
         load('data\res_profile.mat');
-        max_res = 20;
+        max_res = 200;
         res.forecast = res.forecast*max_res;
         res.measured = res.measured*max_res;
         
@@ -142,195 +142,195 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
 
     end
 
-    %if simulation_hours > 1
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,deg2rad(plots_angles(:,1:end-1))','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Bus\;angles\;} (\mathrm{rad})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     % Save figure to .fig and .eps formats
-    %     savefig('./fig/angles.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/angles.eps','epsc');
-    % 
-    % 
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,plots_p(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Generators\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     % Save figure to .fig and .eps formats
-    %     savefig('./fig/generator_power.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/generator_power.eps','epsc');
-    % 
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,plots_p_res(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{RES\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     % Save figure to .fig and .eps formats
-    %     savefig('./fig/res_power.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/res_power.eps','epsc');
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,plots_p_load(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     %Save figure to .fig and .eps formats
-    %     savefig('./fig/load.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/load.eps','epsc');
-    % 
-    % 
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,plots_p_load_measured(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-    %     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Measured\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     %Save figure to .fig and .eps formats
-    %     savefig('./fig/measured_load.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/measured_load.eps','epsc');
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,plots_tielines(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$T_{i}$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     savefig('./fig/tielines.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/tielines.eps','epsc');
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,w_load_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     % Save figure to .fig and .eps formats
-    %     savefig('./fig/w_load.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/w_load.eps','epsc');
-    % 
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,w_res_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{RES\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     %Save figure to .fig and .eps formats
-    %     savefig('./fig/w_res.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/w_res.eps','epsc');
-    % 
-    % 
-    % 
-    %      figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,area_load(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-	%     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     %Save figure to .fig and .eps formats
-    %     savefig('./fig/load.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/load.eps','epsc');
-    % 
-    % 
-    % 
-    % 
-    %     figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    %     hold on;
-    %     grid on;
-    %     box on;
-    %     set(gca,'FontSize',20);
-    %     set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %     stairs(1:simulation_hours,area_load_measured(:,1:end-1)','LineWidth',1.5);
-    %     % legend({'Temperature of agent $\nu_1$'},...
-    %     %     'Location','best','Interpreter','latex');
-    %     ylabel('$\mathrm{Measured\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-    %     xlabel('$t (\mathrm{h})$','Interpreter','latex');
-    %     hold off;
-    %     %Save figure to .fig and .eps formats
-    %     savefig('./fig/measured_load.fig');
-    %     set(gcf,'renderer','Painters');
-    %     saveas(gca,'./fig/measured_load.eps','epsc');
-    % 
-    % end
+    if simulation_hours > 1
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,deg2rad(plots_angles(:,1:end-1))','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Bus\;angles\;} (\mathrm{rad})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/angles.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/angles.eps','epsc');
+
+
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_p(:,1:end-1)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Generators\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/generator_power.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/generator_power.eps','epsc');
+
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_p_res(:,1:end-1)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{RES\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/res_power.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/res_power.eps','epsc');
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_p_load(:,1:end-1)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        %Save figure to .fig and .eps formats
+        savefig('./fig/load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/load.eps','epsc');
+
+
+
+
+        % figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        % hold on;
+        % grid on;
+        % box on;
+        % set(gca,'FontSize',20);
+        % set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        % stairs(1:simulation_hours,plots_p_load_measured(:,1:end-1)','LineWidth',1.5);
+        % % legend({'Temperature of agent $\nu_1$'},...
+        % %     'Location','best','Interpreter','latex');
+        % ylabel('$\mathrm{Measured\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        % xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        % hold off;
+        % %Save figure to .fig and .eps formats
+        % savefig('./fig/measured_load.fig');
+        % set(gcf,'renderer','Painters');
+        % saveas(gca,'./fig/measured_load.eps','epsc');
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,plots_tielines(:,1:end-1)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$T_{i}$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        savefig('./fig/tielines.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/tielines.eps','epsc');
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,w_load_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        % Save figure to .fig and .eps formats
+        savefig('./fig/w_load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/w_load.eps','epsc');
+
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,w_res_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{RES\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        %Save figure to .fig and .eps formats
+        savefig('./fig/w_res.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/w_res.eps','epsc');
+
+
+
+         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,area_load(:,1:end-1)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+	    %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        %Save figure to .fig and .eps formats
+        savefig('./fig/load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/load.eps','epsc');
+
+
+
+
+        figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        hold on;
+        grid on;
+        box on;
+        set(gca,'FontSize',20);
+        set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        stairs(1:simulation_hours,area_load_measured(:,1:end-1)','LineWidth',1.5);
+        % legend({'Temperature of agent $\nu_1$'},...
+        %     'Location','best','Interpreter','latex');
+        ylabel('$\mathrm{Measured\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        hold off;
+        %Save figure to .fig and .eps formats
+        savefig('./fig/area_load.fig');
+        set(gcf,'renderer','Painters');
+        saveas(gca,'./fig/area_load.eps','epsc');
+
+    end
    
     
 

@@ -69,7 +69,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
             %network(j).damping = network(j).damping/network(j).machines;
             network(j).damping = sum(mpc.gen(network(j).mac_nr,2)./100); 
             network(j).inertia = network(j).inertia/network(j).machines;
-            network(j).bias_factor =  network(j).damping + network(j).tg_con(1,4);
+            network(j).bias_factor =  network(j).damping + sum(network(j).tg_con(:,4));
             %network(j).tg_con(:,4) = 0;
             %network(j).freq_feedback(:) = 0;
         end
@@ -393,7 +393,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
             T_i =  T_i + T_ji;
 
-            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) +T_ji;
+            C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) = C_global(C_index(i),index_ss(neighbours(j,1)+1)-1) -T_ji;
         end
         if size(Adjacency_matrix,1) ~= 1
             Adjacency_matrix(i,i) = size(unique(neighbours(:,1)),1);

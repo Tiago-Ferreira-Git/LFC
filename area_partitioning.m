@@ -1,4 +1,6 @@
 function areas = area_partitioning(lines,k,machine_buses)
+
+
     if size(lines,1) ~= size(unique(lines(:,1:2),'rows'),1)
         %error 'Multiple Defined lines'
         lines = unique(lines,'rows');

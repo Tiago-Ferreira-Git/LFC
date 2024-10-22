@@ -13,7 +13,7 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,Pt0,delta_u)
     
     u = u0 + delta_u;
     
-    % u = max(u,0);
+    u = max(u,0);
 
     index_res = 1;
     for i = 1:length(network)
