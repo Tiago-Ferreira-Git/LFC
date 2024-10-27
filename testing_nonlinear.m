@@ -153,8 +153,8 @@ end
 opts = odeset('RelTol',1e-8,'AbsTol',1e-8);
 
 
-
-
+%To do the linearization plots 0:h:seconds -> t_L
+%To do the discretization plots  t_L -> 0:h:seconds 
 
 freq_limit = 0.05/50;
 [t_nl,x_nL] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0,P_load(:,1),P_res,delta_u,mpc.bus(:,8:9),w_load(:,1),K),0:h:simulation_seconds,x0,opts);
@@ -289,23 +289,23 @@ hold off
 % 
 % 
 % 
-% %%
-% % figure
-% % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-% % hold on
-% % grid on
-% % box on;
-% % stairs(t_nl,-y_nL(3:3:end,:)','LineWidth',1.5);
-% % % title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
-% % ylabel('$\theta$ (rad)','interpreter','latex');
-% % xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
-% % %savefig(sprintf('./fig/f_t_{sh}_%.2f.fig',t_sh));
-% % set(gcf,'renderer','Painters');
-% % %saveas(gca,sprintf('./fig/f_t_{sh}_%.2f.png',t_sh),'png');
-% % hold off
+%
+% figure
+% set(gca,'TickLabelInterpreter','latex') % Latex style axis
+% hold on
+% grid on
+% box on;
+% stairs(t_nl,-y_nL(3:3:end,:)','LineWidth',1.5);
+% % title(sprintf('t_{sh} = %.2f s',t_sh),'Interpreter','tex')
+% ylabel('$\theta$ (rad)','interpreter','latex');
+% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% %savefig(sprintf('./fig/f_t_{sh}_%.2f.fig',t_sh));
+% set(gcf,'renderer','Painters');
+% %saveas(gca,sprintf('./fig/f_t_{sh}_%.2f.png',t_sh),'png');
+% hold off
 % 
 % 
-% %%
+% %
 % figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
 % hold on;
 % grid on;
@@ -314,12 +314,13 @@ hold off
 % set(gca,'TickLabelInterpreter','latex')
 % 
 % errors = (x_nL' - x_L');
-% %error([5,10,15,20,25],:) = 0;
+% error([5,10,15,20,25],:) = 0;
 % for i = 1:size(A_c)
 %     stairs(t_L,errors(i,:)','LineWidth',1.5);
 % end
-% ylabel('$\epsilon_{model}$ ','interpreter','latex');
-% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% ylabel('$\epsilon_{\mathrm{model}}$ ','interpreter','latex');
+% xlabel('$t \;(\mathrm{s})$','Interpreter','latex');
+% xlim([0 t_L(end)])
 % set(gcf,'renderer','Painters');
 % savefig('fig/errors_integrator.fig');
 % set(gcf,'renderer','Painters');
@@ -327,7 +328,7 @@ hold off
 % saveas(gca,'./fig/errors_integrator.eps','epsc');
 % 
 % hold off
-% 
+% % 
 % %%
 % 
 % figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -342,8 +343,9 @@ hold off
 % for i = 1:size(A,1)
 %     stairs(t_L,errors(i,:)','LineWidth',1.5);
 % end
-% ylabel('$\epsilon_{model}$ ','interpreter','latex');
-% xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+% ylabel('$\epsilon_{\mathrm{model}}$ ','interpreter','latex');
+% xlabel('$t \;(\mathrm{s})$','Interpreter','latex');
+% xlim([0 t_L(end)])
 % set(gcf,'renderer','Painters');
 % savefig('fig/errors_wo_integrator.fig');
 % set(gcf,'renderer','Painters');
@@ -521,13 +523,16 @@ errors(~mask,:) = 0;
 for i = 1:size(A_c)
     stairs(t_nl,errors(i,:)','LineWidth',1.5);
 end
-ylabel('$\epsilon_{discrete}$ ','interpreter','latex');
-xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
+ylabel('$\epsilon_{\mathrm{discrete}}$ ','interpreter','latex');
+xlabel('$t \;(\mathrm{s})$','Interpreter','latex');
+xlim([0 t_nl(end)])
 set(gcf,'renderer','Painters');
 savefig('fig/errors_discrete.fig');
 set(gcf,'renderer','Painters');
 saveas(gca,'fig/errors_discrete.png','png');
 saveas(gca,'./fig/errors_discrete.eps','epsc');
+
+
 
 hold off
 
