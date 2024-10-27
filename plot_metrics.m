@@ -1,17 +1,14 @@
-function  plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y_d,u_c,x_c,y_c,h,freq_index,angle_index,q,R)
+function  [J_c, J_d] = plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y_d,u_c,x_c,y_c,h,freq_index,angle_index,q,R)
 
     simulation_hours = ceil(simulation_seconds/3600);
-
+    % 
     %Obtain ACE
-    ace_d = zeros(n_areas,length(t));
+    ace = zeros(n_areas,length(t));
     for i =1:n_areas       
-        ace_d(i,:) = y_d((i-1)*4+4,:) + network(i).bias_factor.*(y_d((i-1)*4+1,:)-1); 
+        ace(i,:) = ace(i,:) +  abs(y_c(i*4,:) + network(i).bias_factor.*(y_c((i-1)*4+1,:)-1)) - abs(y_d(i*4,:) + network(i).bias_factor.*(y_d((i-1)*4+1,:)-1)); 
     end
 
-    ace_c = zeros(n_areas,length(t));
-    for i =1:n_areas       
-        ace_c(i,:) = y_c((i-1)*4+4,:) + network(i).bias_factor.*(y_c((i-1)*4+1,:)-1); 
-    end
+
 
 
     %frequency_error_cost,disp_cost_area,disp_cost_machine,time_settling_cost,R_,to_plot
@@ -28,7 +25,7 @@ function  plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y
         t_transient = k +  100;
         for i =1:n_areas
             time_settling_c(k_,i) = t_settling(t,t_transient,freq_lim,(y_c((i-1)*4+1,:)-1),h,k);
-            
+
         end
         k_ = k_ + 1;
     end
@@ -52,53 +49,24 @@ function  plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y
     set(gca,'FontSize',20);
     set(gca,'TickLabelInterpreter','latex') % Latex style axis
     %%%%
-    plot(t,ace_c,'LineWidth',1.5)
+    plot(t(1:100:end),ace(:,1:100:end),'LineWidth',1.5)
     %%%%
-    %legend({'Frequency','Angle','Control Action'},...
-	    %'Location','best','Interpreter','latex');
+    %ylim([-0.2 0.4])
+    legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','best','Interpreter','latex');
     %ylabel('Frequency error ($|0 - \Delta \omega |$) $(\mathrm{pu})$','Interpreter','latex');
-    ylabel('ACE ','Interpreter','latex');
+    ylabel('$|\mathbf{ACE}_\mathrm{c}| - |\mathbf{ACE}_\mathrm{d}|$ ','Interpreter','latex');
     if simulation_hours > 1
 
-        xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
         xticks(0:3600:(simulation_hours-1)*3600)
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)*3600])
     else
         xlabel('$t \;[\mathrm{s }]$','Interpreter','latex');
     end
-    savefig('./fig/ace_c.fig');
+    savefig('./fig/ace.fig');
     set(gcf,'renderer','Painters');
-    saveas(gca,'./fig/ace_c.eps','epsc');
-
-
-    figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    hold on;
-    grid on;
-    box on;
-    set(gca,'FontSize',20);
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %%%%
-    plot(t,ace_d,'LineWidth',1.5)
-    %%%%
-    %legend({'Frequency','Angle','Control Action'},...
-	    %'Location','best','Interpreter','latex');
-    %ylabel('Frequency error ($|0 - \Delta \omega |$) $(\mathrm{pu})$','Interpreter','latex');
-    ylabel('ACE ','Interpreter','latex');
-    if simulation_hours > 1
-        xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-        xticks(0:3600:(simulation_hours-1)*3600)
-        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
-        xlim([0 (simulation_hours-1)*3600])
-    else
-        xlabel('$t \;[\mathrm{s }]$','Interpreter','latex');
-    end
-    savefig('./fig/ace_d.fig');
-    set(gcf,'renderer','Painters');
-    saveas(gca,'./fig/ace_d.eps','epsc');
-
-
-
+    saveas(gca,'./fig/ace.eps','epsc');
 
 
 
@@ -117,7 +85,7 @@ function  plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y
     energy_d = zeros(size(t));
 
 
-    
+
     cost_freq_c = zeros(size(t));
     cost_angle_c = zeros(size(t));
     cost_u_c = zeros(size(t));
@@ -138,66 +106,7 @@ function  plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y
     end
 
 
-    
 
-
-
-    figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    hold on;
-    grid on;
-    box on;
-    set(gca,'FontSize',20);
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %%%%
-    plot(t,cost_freq_d','LineWidth',1.5)
-    plot(t,cost_angle_d','LineWidth',1.5)
-    plot(t,cost_u_d','LineWidth',1.5)
-
-    %%%%
-    legend({'Frequency','Angle','Control Action'},...
-	    'Location','best','Interpreter','latex');
-    %ylabel('Frequency error ($|0 - \Delta \omega |$) $(\mathrm{pu})$','Interpreter','latex');
-    ylabel('Cost Function ','Interpreter','latex');
-    
-    if simulation_hours > 1
-        xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-        xticks(0:3600:(simulation_hours-1)*3600)
-        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
-        xlim([0 (simulation_hours-1)*3600])
-    else
-        xlabel('$t \;[\mathrm{s }]$','Interpreter','latex');
-    end
-    savefig('./fig/J_d.fig');
-    set(gcf,'renderer','Painters');
-    saveas(gca,'./fig/J_d.eps','epsc');
-    
-    figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    hold on;
-    grid on;
-    box on;
-    set(gca,'FontSize',20);
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %%%%
-    plot(t,cost_freq_c','LineWidth',1.5)
-    plot(t,cost_angle_c','LineWidth',1.5)
-    plot(t,cost_u_c','LineWidth',1.5)
-
-    %%%%
-    legend({'Frequency','Angle','Control Action'},...
-	    'Location','best','Interpreter','latex');
-    %ylabel('Frequency error ($|0 - \Delta \omega |$) $(\mathrm{pu})$','Interpreter','latex');
-    ylabel('Cost Function ','Interpreter','latex');
-    if simulation_hours > 1
-        xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-        xticks(0:3600:(simulation_hours-1)*3600)
-        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
-        xlim([0 (simulation_hours-1)*3600])
-    else
-        xlabel('$t \;[\mathrm{s }]$','Interpreter','latex');
-    end
-    savefig('./fig/J_c.fig');
-    set(gcf,'renderer','Painters');
-    saveas(gca,'./fig/J_c.eps','epsc');
 
 
 
@@ -207,55 +116,84 @@ function  plot_metrics(n_areas,n_machines,simulation_seconds,network,t,u_d,x_d,y
     box on;
     set(gca,'FontSize',20);
     set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    J_c = cost_freq_c + cost_angle_c + cost_u_c;
+    J_d = cost_freq_d + cost_angle_d + cost_u_d;
+
     %%%%
-    
-   
-    plot(t,energy_c','LineWidth',1.5)
-    plot(t,energy_d','LineWidth',1.5)
+    plot(t(1:100:end),J_c(1:100:end)','LineWidth',1.5)
+    plot(t(1:100:end),J_d(1:100:end)','LineWidth',1.5)
 
     %%%%
     legend({'Centralized','Decentralized'},...
 	    'Location','best','Interpreter','latex');
-    
-    ylabel('Energy - $|\Delta u_\mathrm{i} |^2$','Interpreter','latex');
-    %ylabel('Cost Function ','Interpreter','latex');
+    %ylabel('Frequency error ($|0 - \Delta \omega |$) $(\mathrm{pu})$','Interpreter','latex');
+    ylabel('Cost Function ','Interpreter','latex');
+
     if simulation_hours > 1
-        xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
         xticks(0:3600:(simulation_hours-1)*3600)
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)*3600])
     else
         xlabel('$t \;[\mathrm{s }]$','Interpreter','latex');
+    end
+    savefig('./fig/J.fig');
+    set(gcf,'renderer','Painters');
+    saveas(gca,'./fig/J.eps','epsc');
+
+    J_c = sum(J_c);
+    J_d = sum(J_d);
+
+    figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+    hold on;
+    grid on;
+    box on;
+    set(gca,'FontSize',20);
+    set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    %%%%
+
+
+    plot(t,energy_c'-energy_d','LineWidth',1.5)
+    %plot(t,','LineWidth',1.5)
+
+    %%%%
+    %legend({'Centralized','Decentralized'},...
+	%    'Location','best','Interpreter','latex');
+
+    ylabel('$\mathbf{E}_\mathrm{c} - \mathbf{E}_\mathrm{d}$','Interpreter','latex');
+    %ylabel('Cost Function ','Interpreter','latex');
+    if simulation_hours > 1
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
+        xticks(0:3600:(simulation_hours-1)*3600)
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)*3600])
+    else
+        xlabel('$t \;[\mathrm{s}]$','Interpreter','latex');
     end
     savefig('./fig/energy.fig');
     set(gcf,'renderer','Painters');
     saveas(gca,'./fig/energy.eps','epsc');
-
-
-
-    figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-    hold on;
-    grid on;
-    box on;
-    set(gca,'FontSize',20);
-    set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    %%%%
-    
-   
-    plot(mean(time_settling_c,2),'LineWidth',1.5)
-    plot(mean(time_settling_d,2),'LineWidth',1.5)
-
-    %%%%
-    legend({'Centralized','Decentralized'},...
-	    'Location','best','Interpreter','latex');
-    
-    ylabel('Time Settling $\;[\mathrm{s }]$','Interpreter','latex');
-    %ylabel('Cost Function ','Interpreter','latex');
-    xlabel('$t \;[\mathrm{h}]$','Interpreter','latex');
-    xticks(0:1:simulation_hours)
-    savefig('./fig/time_settling.fig');
-    set(gcf,'renderer','Painters');
-    saveas(gca,'./fig/time_settling.eps','epsc');
+    % 
+    % 
+    % 
+    % figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+    % hold on;
+    % grid on;
+    % box on;
+    % set(gca,'FontSize',20);
+    % set(gca,'TickLabelInterpreter','latex') % Latex style axis
+    % scatter(0:simulation_hours-1,mean(time_settling_c,2),"filled")
+    % scatter(0:simulation_hours-1,mean(time_settling_d,2),"filled")
+    % legend({'Centralized','Decentralized'},...
+	%     'Location','best','Interpreter','latex');
+    % xlim([-0.5 23.5])
+    % ylabel('Time Settling $\;[\mathrm{s }]$','Interpreter','latex');
+    % %ylabel('Cost Function ','Interpreter','latex');
+    % xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
+    % %xticks(-1:1:simulation_hours)
+    % savefig('./fig/time_settling.fig');
+    % set(gcf,'renderer','Painters');
+    % saveas(gca,'./fig/time_settling.eps','epsc');
 
 
 

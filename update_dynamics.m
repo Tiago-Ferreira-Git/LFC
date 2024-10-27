@@ -1,4 +1,4 @@
-function [K] = update_dynamics(mpc,network,flag_ren,h,n_areas,simulation_seconds,k,Q,R,E,flag)
+function [K] = update_dynamics(mpc,network,flag_ren,h,n_areas,simulation_seconds,k,Q,R,E,flag_controller)
 
     % w_load__hour = load_('data\w_load_.mat');
     % w_load__hour = w_load__hour.w_load_(:,1:24);
@@ -91,11 +91,11 @@ function [K] = update_dynamics(mpc,network,flag_ren,h,n_areas,simulation_seconds
     [A_c,B_c,~,~,W_c,~,~,~,~,~,~,~,~,~,~] = get_global_ss(mpc,n_areas,flag_ren,debug,network);
     [A,B,~] = discrete_dynamics(A_c,B_c,W_c,h);
 
-    if flag  
+    if flag_controller  
         K = dlqr(A,B,Q,R);
     else
         [K,~,~]  = LQROneStepLTI(A,B,Q,R,E,NaN);
     end
 
         
-end
+ end

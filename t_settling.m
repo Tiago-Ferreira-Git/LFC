@@ -25,7 +25,9 @@ function time_settle = t_settling(t,t_transient,freq_lim,freq,h,t_shift)
     end
     
     time_settle =  t(index)-t_shift;
-
+    if time_settle > 3600
+        time_settle = 0;
+    end
         
 end
 

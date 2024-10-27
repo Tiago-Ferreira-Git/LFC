@@ -5,7 +5,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
     % w_res_hour = load_('data\w_res.mat');
     % w_res_hour = w_res_hour.w_res(:,1:24);
 
- 
+    
 
     load('data\load_profile.mat');
 
@@ -19,10 +19,11 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         
     end
 
-
+    
 
 
     n_res = sum(mpc.isolar_mask);
+    legend_text = cell(n_res,1);
 
     % n_res = sum(bus_ss(:,4));
     %if the number of areas in the data available is lower than the areas 
@@ -74,6 +75,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
 
     %Test if all load and renewables converge
     mpc_initial = mpc;
+    j = 1;
     for k = 1:simulation_hours+1
         load_measured = zeros(size(mpc.bus,1),1);
         for i = 1:n_areas
@@ -99,6 +101,12 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
             
 
             idx = network(i).res_nr;
+
+            if j ~= n_res+1
+                legend_text(j) = cellstr(sprintf('Area %d',i));
+                j = j+1;
+            end
+
             mpc.gen(idx,2) = res.forecast(idx-n_machines,k);
 
 
@@ -150,8 +158,9 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,deg2rad(plots_angles(:,1:end-1))','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Bus\;angles\;} (\mathrm{rad})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -170,8 +179,12 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,plots_p(:,1:end-1)','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        xticks(0:3600:(simulation_hours-1)*3600)
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)*3600])
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Generators\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -189,8 +202,9 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,plots_p_res(:,1:end-1)','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{RES\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -207,8 +221,9 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,plots_p_load(:,1:end-1)','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -245,8 +260,10 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,plots_tielines(:,1:end-1)','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
+        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
         ylabel('$T_{i}$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -261,10 +278,12 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,w_load_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        stairs(0:simulation_hours-1,w_load_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
+        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','best','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
@@ -280,9 +299,11 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,w_res_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        stairs(0:simulation_hours-1,w_res_hour(:,1:end-1)'.*mpc.baseMVA,'LineWidth',1.5);
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
+        legend(legend_text,'Location','best','Interpreter','latex');
         ylabel('$\mathrm{RES\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -300,8 +321,11 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,area_load(:,1:end-1)','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-	    %     'Location','best','Interpreter','latex');
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
+        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
+        xlim([0 (simulation_hours-1)*3600])
         ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -320,8 +344,10 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
         stairs(1:simulation_hours,area_load_measured(:,1:end-1)','LineWidth',1.5);
-        % legend({'Temperature of agent $\nu_1$'},...
-        %     'Location','best','Interpreter','latex');
+        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
+        xticks(0:1:(simulation_hours-1))
+        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Measured\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
