@@ -141,11 +141,15 @@ box on;
 set(gca,'FontSize',20);
 set(gca,'TickLabelInterpreter','latex') % Latex style axis
 stairs(t(:,mask),w_measured(:,mask)' - w_forecast(:,mask)','LineWidth',1.5)
-xlabel('Time (s)')
+xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
+xticks(0:3600:(24-1)*3600)
+xticklabels(sprintfc('%d', 0:(24-1)))
+xlim([0 (24-1)*3600])
 ylabel('Normalized RES Difference')
 savefig('difference.fig');
 set(gcf,'renderer','Painters');
 saveas(gca,'res_difference.eps','epsc');
+saveas(gca,'res_difference.png','png');
 
 
 

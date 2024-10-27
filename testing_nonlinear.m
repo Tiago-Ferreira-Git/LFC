@@ -5,31 +5,31 @@ opt = mpoption('verbose',0,'out.all',0);
 
 
 
-% 
-% % load('data/sim_14_5')
-% % debug = 2;
-% % flag_ren = 1;
-% % flag_plot_metrics = 0;
-% 
-% 
-% %Column vector with buses
-% 
-% % res_bus = [2;6;9];
-% % % res_bus = [];
-% % [mpc,n_res,idx_initial] = get_g('case14',res_bus,flag_ren);
-% % idx = idx_initial;
-% % mpc = runopf(mpc,opt);
-% % clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt network
-% % 
-% % n_areas = 5;
-% % A_c = 1;
-% % while any(real(eig(A_c)) > 0)
-% %     [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug,network);
-% %     % eig(A_c)
-% %     1;
-% % end
-% 
-% 
+
+%load('data/sim_14_5')
+debug = 2;
+flag_ren = 1;
+flag_plot_metrics = 0;
+
+
+%Column vector with buses
+
+%res_bus = [2;6;9];
+ res_bus = [];
+[mpc,n_res,idx_initial] = get_g('case118',res_bus,flag_ren);
+idx = idx_initial;
+mpc = runopf(mpc,opt);
+clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  simulation_hours simulation_seconds h debug opt network
+
+n_areas = 30;
+A_c = 1;
+while any(real(eig(A_c)) > 0)
+    [A_c,B_c,C,~,W_c,~,C_mech,~,E,~,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug);
+    % eig(A_c)
+    1;
+end
+
+
 % % max(A_c,[],'all')
 % % network_initial = network;
 % % 
@@ -52,7 +52,7 @@ opt = mpoption('verbose',0,'out.all',0);
 % % % load('data/sim_118_30')
 % % % load('data/sim_57_3')
 % load('data/sim_14_5')
-% %load('data/sim_118_30_no_res')
+%load('data/sim_118_30_no_res')
 % % % % load('data/sim_57_3_res_2')
 % % % % 
 % % % % n_areas = 3;
@@ -65,20 +65,23 @@ opt = mpoption('verbose',0,'out.all',0);
 % % 
 % % 
 % % load("data\sim_118_30_no_res.mat")
-% h = 0.01;
+h = 1;
+
+simulation_hours = 24;
+simulation_seconds = 1000 + 3600*simulation_hours;
+
+%%
+
+[A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
+
+[P,~] = permute_matrix(A,ren_ss);
+
+% Initial conditions
 % 
-% simulation_hours = 0;
-% simulation_seconds = 1000 + 3600*simulation_hours;
-% 
-% 
-% 
-% [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
-% 
-% [P,~] = permute_matrix(A,ren_ss);
-% 
-% % Initial conditions
-% 
-% [w,w_load,w_ren,P_load,P_res,u0,P_forecasted] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss);
+[w,w_load,w_ren,P_load,P_res,u0,P_forecasted] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss);
+
+1;
+
 % 
 % 
 % [x0,u0_,Pt0,PL0,Ploss]  = initial_conditions(size(A_c,1),size(B,2),bus_ss(:,2),network,mpc);

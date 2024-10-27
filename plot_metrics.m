@@ -182,8 +182,8 @@ function  [J_c, J_d] = plot_metrics(n_areas,n_machines,simulation_seconds,networ
     % box on;
     % set(gca,'FontSize',20);
     % set(gca,'TickLabelInterpreter','latex') % Latex style axis
-    % scatter(0:simulation_hours-1,mean(time_settling_c,2),"filled")
-    % scatter(0:simulation_hours-1,mean(time_settling_d,2),"filled")
+    % scatter(,mean(time_settling_c,2),"filled")
+    % scatter(,mean(time_settling_d,2),"filled")
     % legend({'Centralized','Decentralized'},...
 	%     'Location','best','Interpreter','latex');
     % xlim([-0.5 23.5])

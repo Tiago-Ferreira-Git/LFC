@@ -157,17 +157,18 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,deg2rad(plots_angles(:,1:end-1))','LineWidth',1.5);
+        stairs(0:simulation_hours-1,deg2rad(plots_angles(:,1:end-1))','LineWidth',1.5);
         xticks(0:1:(simulation_hours-1))
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Bus\;angles\;} (\mathrm{rad})$','Interpreter','latex');
-        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
         savefig('./fig/angles.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/angles.eps','epsc');
+        saveas(gca,'./fig/angles.png','png');
 
 
 
@@ -178,7 +179,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,plots_p(:,1:end-1)','LineWidth',1.5);
+        stairs(0:simulation_hours-1,plots_p(:,1:end-1)','LineWidth',1.5);
         xticks(0:3600:(simulation_hours-1)*3600)
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)*3600])
@@ -186,12 +187,13 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Generators\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
         savefig('./fig/generator_power.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/generator_power.eps','epsc');
+        saveas(gca,'./fig/generator_power.png','png');
 
 
 
@@ -201,17 +203,20 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,plots_p_res(:,1:end-1)','LineWidth',1.5);
+        stairs(0:simulation_hours-1,plots_p_res(:,1:end-1)','LineWidth',1.5);
         xticks(0:1:(simulation_hours-1))
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{RES\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
         savefig('./fig/res_power.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/res_power.eps','epsc');
+        saveas(gca,'./fig/res_power.png','png');
+        
+
 
 
         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -220,17 +225,18 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,plots_p_load(:,1:end-1)','LineWidth',1.5);
+        stairs(0:simulation_hours-1,plots_p_load(:,1:end-1)','LineWidth',1.5);
         xticks(0:1:(simulation_hours-1))
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-        xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        xlabel('$t \;(\mathrm{h})$','Interpreter','latex');
         hold off;
         %Save figure to .fig and .eps formats
         savefig('./fig/load.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/load.eps','epsc');
+        saveas(gca,'./fig/load.png','png');
 
 
 
@@ -259,17 +265,18 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,plots_tielines(:,1:end-1)','LineWidth',1.5);
+        stairs(0:simulation_hours-1,plots_tielines(:,1:end-1)','LineWidth',1.5);
         xticks(0:1:(simulation_hours-1))
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
-        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
+        %legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
         ylabel('$T_{i}$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         savefig('./fig/tielines.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/tielines.eps','epsc');
+        saveas(gca,'./fig/tielines.png','png');
 
 
         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
@@ -283,13 +290,14 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
         ylabel('$\mathrm{Load\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
-        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','best','Interpreter','latex');
+        %legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','best','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
         % Save figure to .fig and .eps formats
         savefig('./fig/w_load.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/w_load.eps','epsc');
+        saveas(gca,'./fig/w_load.png','png');
 
 
 
@@ -303,7 +311,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         xticks(0:1:(simulation_hours-1))
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
-        legend(legend_text,'Location','best','Interpreter','latex');
+        %legend(legend_text,'Location','best','Interpreter','latex');
         ylabel('$\mathrm{RES\;Power\;Difference\;} (\mathrm{MW})$','Interpreter','latex');
         xlabel('$t (\mathrm{h})$','Interpreter','latex');
         hold off;
@@ -311,28 +319,30 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         savefig('./fig/w_res.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/w_res.eps','epsc');
+        saveas(gca,'./fig/w_res.png','png');
+        
 
 
 
-         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
-        hold on;
-        grid on;
-        box on;
-        set(gca,'FontSize',20);
-        set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,area_load(:,1:end-1)','LineWidth',1.5);
-        xticks(0:1:(simulation_hours-1))
-        xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
-        xlim([0 (simulation_hours-1)])
-        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
-        xlim([0 (simulation_hours-1)*3600])
-        ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
-        xlabel('$t (\mathrm{h})$','Interpreter','latex');
-        hold off;
-        %Save figure to .fig and .eps formats
-        savefig('./fig/load.fig');
-        set(gcf,'renderer','Painters');
-        saveas(gca,'./fig/load.eps','epsc');
+        %  figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
+        % hold on;
+        % grid on;
+        % box on;
+        % set(gca,'FontSize',20);
+        % set(gca,'TickLabelInterpreter','latex') % Latex style axis
+        % stairs(0:simulation_hours-1,area_load(:,1:end-1)','LineWidth',1.5);
+        % xticks(0:1:(simulation_hours-1))
+        % xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
+        % xlim([0 (simulation_hours-1)])
+        % %legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
+        % xlim([0 (simulation_hours-1)*3600])
+        % ylabel('$\mathrm{Forecasted\;Load\;Power\;} (\mathrm{MW})$','Interpreter','latex');
+        % xlabel('$t (\mathrm{h})$','Interpreter','latex');
+        % hold off;
+        % %Save figure to .fig and .eps formats
+        % savefig('./fig/load.fig');
+        % set(gcf,'renderer','Painters');
+        % saveas(gca,'./fig/load.eps','epsc');
 
 
 
@@ -343,8 +353,8 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         box on;
         set(gca,'FontSize',20);
         set(gca,'TickLabelInterpreter','latex') % Latex style axis
-        stairs(1:simulation_hours,area_load_measured(:,1:end-1)','LineWidth',1.5);
-        legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
+        stairs(0:simulation_hours-1,area_load_measured(:,1:end-1)','LineWidth',1.5);
+        %legend({'Area 1','Area 2','Area 3','Area 4','Area 5'},'Location','northeast','Interpreter','latex');
         xticks(0:1:(simulation_hours-1))
         xticklabels(sprintfc('%d', 0:(simulation_hours-1)))
         xlim([0 (simulation_hours-1)])
@@ -355,6 +365,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         savefig('./fig/area_load.fig');
         set(gcf,'renderer','Painters');
         saveas(gca,'./fig/area_load.eps','epsc');
+        saveas(gca,'./fig/area_load.png','png');
 
     end
    
