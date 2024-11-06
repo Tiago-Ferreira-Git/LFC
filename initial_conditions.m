@@ -1,7 +1,22 @@
 function [x0,u0,Pt0,PL0,Ploss] = initial_conditions(ss_dim,n_machines,bus_ss,network,mpc)
-
-    %Pt0 - Tie-line initial value per area
-    %PL0 - Initial Consuption values per area
+%initial_conditions   Given a MATPOWER case, this function obtains the initial conditions for state-space
+%   representation .
+%
+%   Inputs:                          
+%       
+%       ss_dim - The dimension of the state-space.
+%       n_machines - Number of machines in the network.
+%       network - Vector of area objects with each area with buses assigned and the area parameters.
+%       mpc - The MATPOWER case struct after running OPF.
+%
+%
+%   Outputs:
+%
+%       x0 - The MATPOWER case struct after running OPF.
+%       u0 - Number of areas in the network (deprecated).
+%       Pt0 - A boolean flag that says if there are RESs in the system.
+%       PL0 - Vector of area objects with each area with buses assigned and the area parameters (deprecated).
+%       Ploss- Vector of area objects with each area with buses assigned and the area parameters (deprecated). 
 
 
     x0 = zeros(ss_dim,1);

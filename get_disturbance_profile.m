@@ -1,10 +1,28 @@
 function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss)
-    % w_load__hour = load_('data\w_load_.mat');
-    % w_load__hour = w_load__hour.w_load_(:,1:24);
-    % 
-    % w_res_hour = load_('data\w_res.mat');
-    % w_res_hour = w_res_hour.w_res(:,1:24);
-
+%get_disturbance_profile   Generate disturbance profiles for each area using real data.
+%
+%   Inputs:                          
+%       
+%       mpc - The MATPOWER case struct after running OPF.
+%       network - Vector of area objects returned from the get_global_ss function.
+%       h - Sampling time in seconds.
+%       n_areas - Number of areas in the network.
+%       simulation_seconds - Total simulation duration in seconds.
+%       bus_ss - A matrix that contains useful information about the state
+%           sapce representation.
+%
+%
+%   Outputs:
+%
+%       w - Concactenated vector of w_load and w_res. 
+%       w_load - Incremental disturbance vector associated with loads.
+%       w_res - Incremental disturbance vector associated with RESs.
+%       P_load - Absolute real load power.
+%       P_res - Absolute res power.
+%       u0 - Initial control action (deprecated).
+%       P_load_forecasted - Absolute forecasted load power.
+%       mpc_ - The  MATPOWER case after running opf with initial changes in load
+%       power / RESs.
     
 
     load('data\load_profile.mat');
@@ -25,8 +43,8 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
     n_res = sum(mpc.isolar_mask);
     legend_text = cell(n_res,1);
 
-    % n_res = sum(bus_ss(:,4));
-    %if the number of areas in the data available is lower than the areas 
+
+    % Repeat the forecasted data to match the number of buses of the network or if t is specified to be greater than an year
     if size(load_.forecast,1) < length(mpc.bus) 
         load_.forecast = [repmat(load_.forecast, floor(length(mpc.bus)/size(load_.forecast,1)), 1); ...
                         load_.forecast(1:mod(length(mpc.bus), size(load_.forecast,1)),:)];
@@ -99,7 +117,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
 
 
             
-
+            % Change RES
             idx = network(i).res_nr;
 
             if j ~= n_res+1
@@ -150,6 +168,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
 
     end
 
+    %Plots
     if simulation_hours > 1
         figure('Position',4*[0 0 192 144]); % Nice aspect ratio for double column
         hold on;
@@ -370,7 +389,7 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
     end
    
     
-
+    %% Resample to match the sampling time h
     load_mask = zeros(1,size(w,1));
     load_mask(1) = 1;
     load_mask(cumsum(1+bus_ss(1:end-1,4))+1) = 1;
@@ -407,22 +426,6 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
         end
     end
 
-    % 
-    %     u0 = repmat(u0,1,simulation_seconds/h +1);
-    %     P_load = repmat(P_load,1,simulation_seconds/h +1);
-    %     w_load = repmat(w_load_hour,1,simulation_seconds/h +1);
-    % 
-    %     if n_res ~= 0
-    %         P_res = repmat(P_res,1,simulation_seconds/h +1);
-    %         w_res = repmat(w_res_hour,1,simulation_seconds/h +1);
-    %     end
-    % 
-    % 
-    % end 
-
-   
-    
-
     
     if n_res ~= 0
         w = zeros(n_areas+n_res,size(w_load,2));
@@ -452,11 +455,6 @@ function [w,w_load,w_res,P_load,P_res,u0,P_load_forecasted,mpc_] = get_disturban
     % 
     % 
     % end
-
-
-
-
-    
 
 
 

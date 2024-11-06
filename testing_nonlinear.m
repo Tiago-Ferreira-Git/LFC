@@ -11,17 +11,15 @@ flag_plot_metrics = 0;
 %Column vector with buses
 
 res_bus = [];
-[mpc,n_res,idx_initial] = get_g('case14',res_bus,flag_ren);
-idx = idx_initial;
+[mpc,n_res] = get_g('case14',res_bus,flag_ren);
 mpc = runopf(mpc,opt);
-clearvars -except mpc flag_plot_metrics flag_ren n_res idx idx_initial  debug opt 
+clearvars -except mpc flag_plot_metrics flag_ren n_res debug opt 
 
 n_areas = 3;
 A_c = 1;
 while any(real(eig(A_c)) > 0)
-    [A_c,B_c,C,~,W_c,~,~,~,E,~,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren);
-    % eig(A_c)
-    1;
+    [A_c,B_c,C,~,W_c,~,E,~,network,bus_ss,ren_ss,k_ties] = get_global_ss(mpc,n_areas,flag_ren);
+    
 end
 
 
@@ -42,10 +40,10 @@ simulation_seconds = 200 + 3600*simulation_hours;
 
 [A,B,W] = discrete_dynamics(A_c,B_c,W_c,h);
 
-[P,~] = permute_matrix(A,ren_ss);
+P = permute_matrix(A,ren_ss);
 
 % Initial conditions
-[w,w_load,w_ren,P_load,P_res,u0,P_forecasted] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss);
+[w,w_load,w_ren,P_load,P_res,u0,P_forecasted,mpc] = get_disturbance_profile(mpc,network,h,n_areas,simulation_seconds,bus_ss);
 
 
 
@@ -141,9 +139,9 @@ for k = 1:length(t)
 
 
     if isempty(P_res)
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res,Pt0,delta_u_decentralized(:,k)),[0 h],x_decentralized(:,k),opts_sim);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res,mpc.bus(:,8:9),delta_u_decentralized(:,k)),[0 h],x_decentralized(:,k),opts_sim);
     else
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res(:,k),Pt0,delta_u_decentralized(:,k)),[0 h],x_decentralized(:,k),opts_sim);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res(:,k),mpc.bus(:,8:9),delta_u_decentralized(:,k)),[0 h],x_decentralized(:,k),opts_sim);
     end
 
 
@@ -155,9 +153,9 @@ for k = 1:length(t)
 
 
     if isempty(P_res)
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res,Pt0,delta_u_centralized(:,k)),[0 h],x_centralized(:,k),opts_sim);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res,mpc.bus(:,8:9),delta_u_centralized(:,k)),[0 h],x_centralized(:,k),opts_sim);
     else
-        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res(:,k),Pt0,delta_u_centralized(:,k)),[0 h],x_centralized(:,k),opts_sim);
+        [~,x] = ode45(@(t,x) nonlinear_model(t,x,network,bus_ss,x0,u0(:,k),P_load(:,k),P_res(:,k),mpc.bus(:,8:9),delta_u_centralized(:,k)),[0 h],x_centralized(:,k),opts_sim);
     end
 
 

@@ -1,5 +1,20 @@
 function [A,B,W] = discrete_dynamics(A,B,W,h)
-
+%discrete_dynamics   Effeciently discretize the continuous-time dynamics.
+%
+%   Inputs:                          
+%       
+%       A - Continuous-time transition matrix. 
+%       B - Continuous-time control matrix.
+%       W - Continuous-time disturbance matrix.
+%       h - Sampling time in seconds.
+%
+%
+%   Outputs:
+%
+%       A - Discrete-time transition matrix. 
+%       B - Discrete-time control matrix.
+%       W - Discrete-time disturbance matrix.
+    
 
     
     G = expm([A W; zeros(size(W,2),size(A,2)) zeros(size(W,2),size(W,2))]*h);
@@ -13,14 +28,5 @@ function [A,B,W] = discrete_dynamics(A,B,W,h)
 
     A = G(1:size(A,1),1:size(A,2));
     
-
-    % D_global = zeros(size(A,1),size(B_global,2));
-    % 
-    % rank(ctrb(A_global,B_global))
-    % rank(ctrb(A,B))
-    % 
-    % sys = ss(A_global,B_global,eye(size(A,1)),D_global);
-    % sys = c2d(sys,h);
-
 
 end

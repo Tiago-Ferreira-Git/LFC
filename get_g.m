@@ -1,4 +1,18 @@
-function [mpc,n_ren,idx] = get_g(data_file,res_bus,flag_ren)
+function [mpc,n_ren] = get_g(data_file,res_bus,flag_ren)
+%get_g   Get the mpc MATPOWER case with added RES with PST machine parameters.
+%
+%   Inputs:                          
+%       
+%       data_file - Name of the MATPOWER testcase. 
+%       res_bus - Vector that specifies the buses where RESs are connected.
+%       flag_ren - A boolean flag that says if there are RESs in the system.
+%
+%
+%   Outputs:
+%
+%       mpc - Updated MATPOWER testcase. 
+%       n_ren - Number of RESs in the system.
+
 
     % 'case118'
     if length(strsplit(data_file,'.mat')) == 2
@@ -8,16 +22,22 @@ function [mpc,n_ren,idx] = get_g(data_file,res_bus,flag_ren)
     else
         mpc = loadcase(data_file);
     end
-    % 
-    % g.mac.mac_con=mac_con;
-    % %g.tg.tg_con=tg_con;
-    % g.lmod.lmod_con=lmod_con;
-    % 
-    % g.line = line;
-    % 
-    % %g.bus = line;
-    % g.bus.bus_int = bus(:,1);
 
+   % THIS COMMENT WAS TAKEN FROM PST documentation:
+   % https://sites.ecse.rpi.edu/~chowj/PSTMan.pdf  as well as the
+   % parameters
+   % tg_con matrix format 
+   %column        data         unit 
+   %  1    turbine model number (=1)    
+   %  2    machine number   
+   %  3    speed set point   wf        pu 
+   %  4    steady state gain 1/R       pu 
+   %  5    maximum power order  Tmax   pu on generator base 
+   %  6    servo time constant   Ts    sec 
+   %  7    governor time constant  Tc  sec 
+   %  8    transient gain time constant T3 sec 
+   %  9    HP section time constant   T4   sec 
+   % 10    reheater time constant    T5    sec     
 
     mpc.tg_con = [... 
         1  1  1  25.0  1.0  0.1  0.5 0.0 1.25 5.0;
@@ -75,6 +95,30 @@ function [mpc,n_ren,idx] = get_g(data_file,res_bus,flag_ren)
         1  53  1  25.0  1.0  0.1  0.5 0.0 1.25 5.0;
         1  54  1  25.0  1.0  0.1  0.5 0.0 1.25 5.0;];
 
+    % THIS COMMENT WAS TAKEN FROM PST documentation:
+    % https://sites.ecse.rpi.edu/~chowj/PSTMan.pdf  as well as the
+    % parameters
+    % Machine data format 
+    %       1. machine number, 
+    %       2. bus number, 
+    %       3. base mva, 
+    %       4. leakage reactance x_l(pu), 
+    %       5. resistance r_a(pu), 
+    %       6. d-axis sychronous reactance x_d(pu), 
+    %       7. d-axis transient reactance x'_d(pu), 
+    %       8. d-axis subtransient reactance x"_d(pu), 
+    %       9. d-axis open-circuit time constant T'_do(sec), 
+    %      10. d-axis open-circuit subtransient time constant  T"_do(sec),             
+    %      11. q-axis sychronous reactance x_q(pu), 
+    %      12. q-axis transient reactance x'_q(pu), 
+    %      13. q-axis subtransient reactance x"_q(pu), 
+    %      14. q-axis open-circuit time constant T'_qo(sec), 
+    %      15. q-axis open circuit subtransient time constant T"_qo(sec),
+    %      16. inertia constant H(sec), 
+    %      17. damping coefficient d_o(pu), 
+    %      18. dampling coefficient d_1(pu), 
+    %      19. bus number 
+    %                 
 
      mpc.mac_con =  [...
           1  53     300  0.003  	0  	0.969   0.248     0.147  	12.6     0.045  ...
@@ -127,6 +171,7 @@ function [mpc,n_ren,idx] = get_g(data_file,res_bus,flag_ren)
                                         4.45  	4.45      0  		 68  	0.0654  0.5743;
     ];
 
+    % Extend these parameters to the number of machines of MATPOWER testcase and assign it to the right buses 
     n_machines = size(mpc.gen,1);
 
     if n_machines > size(mpc.tg_con,1)
@@ -146,6 +191,9 @@ function [mpc,n_ren,idx] = get_g(data_file,res_bus,flag_ren)
     end
     mpc.mac_con(:,1) = 1:n_machines;
     mpc.mac_con(:,2) = mpc.gen(:,1);
+    
+
+    % Assign RESs buses 
     
     idx = [];
     mpc.isgen = true(size(mpc.gen,1),1);
