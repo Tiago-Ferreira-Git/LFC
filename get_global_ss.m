@@ -1,10 +1,10 @@
-function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,debug,network)
+function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,areas,network,bus_ss,ren_ss,E_fs,k_ties] = get_global_ss(mpc,n_areas,flag_ren,network)
     
     base_mva = 100;
     % ren_data = load('data\solar.mat');
     % ren_data = ren_data.data;
     n_machine = sum(mpc.isgen);
-    if(nargin <= 4)
+    if(nargin <= 3)
         if flag_ren
             areas = area_partitioning(mpc.branch,n_areas,mpc.gen(1:n_machine,1));
         else
@@ -270,11 +270,7 @@ function [A_global,B_global,C_global,D_global,W_global,machine_ss,C_mac,u,E,area
 
         %Add error integrator 
         A = [A zeros(size(A,1),1); zeros(1,size(A,1)+1)];
-        if debug == 1
-            A(end,1) = 1; 
-        else
-            A(end,1) = 2*pi*60;
-        end
+        A(end,1) = 2*pi*60;
         B = [B; zeros(1,size(B,2))];
 
         
