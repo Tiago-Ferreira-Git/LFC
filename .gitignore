@@ -1,0 +1,15 @@
+
+# Ignore .asv files
+
+*.asv
+
+# Ignore get_path created by PST
+
+get_path.m
+
+
+*.fig
+*.eps
+*.png
+
+data/results/*.mat
