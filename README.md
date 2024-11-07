@@ -65,8 +65,11 @@ To run the code as is, this repository uses a control algorithm that is availabl
 
 <p align="center">
 <img src="https://raw.githubusercontent.com/Tiago-Ferreira-Git/LFC/refs/heads/main/data/results/frequency_c.png"
-  alt="Size Limit comment in pull request about bundle size changes"
-  width="686" height="289">
+  alt="Centralized Results"
+ >
+ <img src="https://raw.githubusercontent.com/Tiago-Ferreira-Git/LFC/refs/heads/main/data/results/frequency_d.png"
+  alt="Decentralized Results"
+ >
 </p>
 
 ## 🚧 Future work
