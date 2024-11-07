@@ -64,7 +64,7 @@ To run the code as is, this repository uses a control algorithm that is availabl
 ## 🧪 Results
 
 <p align="center">
-<img src="https://raw.githubusercontent.com/andresz1/size-limit-action/master/assets/pr.png](https://raw.githubusercontent.com/Tiago-Ferreira-Git/LFC/refs/heads/main/data/results/frequency_c.png)"
+<img src="https://raw.githubusercontent.com/Tiago-Ferreira-Git/LFC/refs/heads/main/data/results/frequency_c.eps"
   alt="Size Limit comment in pull request about bundle size changes"
   width="686" height="289">
 </p>
