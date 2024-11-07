@@ -40,8 +40,8 @@ function dxdt = nonlinear_model(t,x,network,bus_ss,x0,u0,PL,Pres,bus,delta_u)
         V_area = bus(network(i).to_bus(:,2),1);
         V_neighbour = bus(network(i).to_bus(:,3),1);
         
-        angle_bus = deg2rad(bus(network(i).to_bus(:,2),2)) - x(angle_index(i));
-        angle_nei = deg2rad(bus(network(i).to_bus(:,3),2)) - x(angle_index(network(i).to_bus(:,1)));
+        angle_bus = deg2rad(bus(network(i).to_bus(:,2),2)) + x(angle_index(i));
+        angle_nei = deg2rad(bus(network(i).to_bus(:,3),2)) + x(angle_index(network(i).to_bus(:,1)));
 
         mask = bitand(network(i).to_bus(:,4) == 0, network(i).to_bus(:,10) ~= 0);
         if any(mask)

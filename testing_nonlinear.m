@@ -57,7 +57,7 @@ P = permute_matrix(A,ren_ss);
 
 t = 0:h:simulation_seconds; %time span
 
-sampling_measurements = h*1000;
+sampling_measurements = h*1;
 t_second = 0:sampling_measurements:simulation_seconds; % keep the results for higher sampling just to plot lighter arrays
 
 
